@@ -8,6 +8,10 @@
 #include <TKey.h>
 #include <TClass.h>
 
+class ROOT_type_error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
 #ifdef ROOT_TList
 template <typename T>
 class TList_cast {
@@ -44,7 +48,7 @@ inline T* read_key(TKey& key) {
 inline const TClass* get_class(const char* name) {
   using namespace std::string_literals;
   const TClass* class_ptr = TClass::GetClass(name);
-  if (!class_ptr) throw std::runtime_error("cannot find TClass "s+name);
+  if (!class_ptr) throw ROOT_type_error("cannot find TClass "s+name);
   return class_ptr;
 }
 inline const TClass* get_class(const TKey& key) {

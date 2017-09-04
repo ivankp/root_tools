@@ -18,6 +18,9 @@ ROOT_LIBS += $(shell $(rpath_script))
 C_plot := $(ROOT_CFLAGS)
 L_plot := $(ROOT_LIBS)
 
+C_envelopes := $(ROOT_CFLAGS)
+L_envelopes := $(ROOT_LIBS)
+
 SRC := src
 BIN := bin
 BLD := .build
@@ -33,7 +36,7 @@ NODEPS := clean
 
 all: $(EXES)
 
-bin/plot: $(BLD)/program_options.o
+bin/plot bin/envelopes: $(BLD)/program_options.o
 
 #Don't create dependencies when we're cleaning, for instance
 ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))

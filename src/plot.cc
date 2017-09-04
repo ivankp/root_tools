@@ -20,9 +20,9 @@
 // #include <TStyle.h>
 // #include <TPaveStats.h>
 
-#include "catstr.hh"
 #include "program_options.hh"
 #include "tkey.hh"
+#include "group_map.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
@@ -31,23 +31,9 @@ using std::cout;
 using std::endl;
 using std::cerr;
 using ivanp::cat;
-
-class error : std::runtime_error {
-  using std::runtime_error::runtime_error;
-  template <typename... Args>
-  error(const Args&... args): std::runtime_error(ivanp::cat(args...)) { };
-};
+using ivanp::error;
 
 using shared_str = std::shared_ptr<std::string>;
-
-template <typename T>
-struct deref_adapter : T {
-  using T::T;
-  template <typename... Args>
-  inline auto operator()(const Args&... args) const {
-    return T::operator()(*args...);
-  }
-};
 
 struct flags {
   enum field { g, n, t, x, y, z, l, d, f };
@@ -109,6 +95,8 @@ public:
   TH1 *h;
   shared_str legend;
   hist(TH1* h): h(h) { }
+  hist(const hist&) = default;
+  hist(hist&&) = default;
 
   inline TH1& operator*() noexcept { return *h; }
   inline TH1* operator->() noexcept { return h; }
@@ -141,10 +129,8 @@ public:
   }
 }; // end hist
 
-std::vector<std::vector<hist>> groups; // hist group
-std::unordered_map<
-  shared_str, // group name
-  unsigned,   // group index
+group_map<
+  hist, shared_str,
   deref_adapter<std::hash<std::string>>,
   deref_adapter<std::equal_to<std::string>>
 > groups_map;
@@ -159,13 +145,7 @@ void loop(TDirectory* dir) { // LOOP
       shared_str group;
 
       if ( _h(group) ) { // add hist if it passes selection
-        auto it = groups_map.find(group);
-        if (it!=groups_map.end()) groups[it->second].emplace_back(_h);
-        else {
-          groups.emplace_back();
-          groups.back().emplace_back(_h);
-          groups_map.emplace(std::make_pair(group,groups.size()-1));
-        }
+        groups_map[group].emplace_back(std::move(_h));
       } else continue;
 
     } else if (key_class->InheritsFrom(TDirectory::Class())) { // DIR

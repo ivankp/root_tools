@@ -1,7 +1,5 @@
-// Developed by Ivan Pogrebnyak, MSU
-
-#ifndef IVANP_CATSTR_HH
-#define IVANP_CATSTR_HH
+#ifndef IVANP_STRING_HH
+#define IVANP_STRING_HH
 
 #include <string>
 #include <sstream>
@@ -28,6 +26,14 @@ inline std::string cat(const TT&... tt) {
   return ss.str();
 }
 
+template <typename Str, unsigned N>                                             
+bool starts_with(const Str& str, const char(&prefix)[N]) {                      
+  for (unsigned i=0; i<N-1; ++i)                                                
+    if (str[i]=='\0' || str[i]!=prefix[i]) return false;                        
+  return true;                                                                  
+}
+
 }
 
 #endif
+

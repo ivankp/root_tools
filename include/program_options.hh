@@ -11,7 +11,7 @@
 
 #include "type.hh"
 #include "type_traits.hh"
-#include "catstr.hh"
+#include "string.hh"
 #include "tuple_alg.hh"
 #include "seq_alg.hh"
 
