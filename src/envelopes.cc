@@ -1,14 +1,13 @@
 // Developed by Ivan Pogrebnyak, MSU
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <unordered_map>
 #include <memory>
 #include <algorithm>
 #include <cmath>
 #include <limits>
-
-#include <boost/optional.hpp>
 
 #include <TClass.h>
 #include <TFile.h>
@@ -51,11 +50,19 @@ struct graph {
   const auto& operator*() const noexcept { return points; }
   const auto* operator->() const noexcept { return &points; }
   ~graph() { delete h; }
+
+  void operator/=(const graph& g) {
+    // for (unsigned i=0, n=points.size(); i<n; ++i) {
+    //   auto& p = points[i];
+    //   p.lower /= p.central;
+    //   p.upper /= p.central;
+    // }
+  }
 };
 group_map<graph> graphs;
 
 std::vector<const char*> ifnames;
-short unsigned rebin = 1;
+std::unordered_map<std::string,unsigned> rebin;
 
 void loop(TDirectory* dir) {
   cout << dir->GetName() << endl;
@@ -65,7 +72,10 @@ void loop(TDirectory* dir) {
     if (key_class->InheritsFrom(TH1::Class())) { // HIST
       TH1* h = read_key<TH1>(key);
       const char* name = h->GetName();
-      if (rebin>1 && !ivanp::starts_with(name,"jets_N_")) h->Rebin(rebin);
+
+      const auto r = rebin.find(name);
+      if (r!=rebin.end()) h->Rebin(r->second);
+
       h->Scale(1,"width");
       TAxis* ax = h->GetXaxis();
       const int n = ax->GetNbins()+2;
@@ -99,24 +109,25 @@ void loop(TDirectory* dir) {
 }
 
 int main(int argc, char* argv[]) {
-  const char* ofname;
-  bool logy = false;
+  std::string ofname;
+  bool logy = false, ratio = false;
   std::vector<const char*> legend_labels;
   std::vector<int> colors;
   std::vector<float> alphas;
-  boost::optional<double> hard_ymin;
+  std::unordered_map<std::string,std::pair<double,double>> canvas_ranges;
 
   try {
     using namespace ivanp::po;
     if (program_options()
       (ifnames,'i',"input root file",req(),pos())
       (ofname,'o',"output pdf file",req())
-      (rebin,"--rebin","histogram rebinning factor")
+      (rebin,"--rebin","histogram rebinning factor",multi())
+      (ratio,{"-r","--ratio"},"draw ratios")
       (logy,"--logy","logarithmic Y-axis")
       (legend_labels,'l',"legend labels (for each file)")
       (colors,'c',"colors\ndefault: 2")
-      (hard_ymin,"--ymin","lower Y-axis cutoff")
       (alphas,'a',"transparency levels (alpha)\ndefault: 0.5")
+      (canvas_ranges,"--canvas-range","individual canvas range",multi())
       .parse(argc,argv,true)) return 0;
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;
@@ -142,7 +153,9 @@ int main(int argc, char* argv[]) {
 
   gStyle->SetPaintTextFormat(".2f");
 
+  unsigned rgi = graphs.size(); // reverse counter
   for (const auto& gg : graphs) {
+    --rgi;
     cout << gg.first << endl;
 
     const bool is_njets = ivanp::starts_with(gg.first,"jets_N_");
@@ -212,38 +225,37 @@ int main(int argc, char* argv[]) {
       ++nf;
     }
 
-    // TEST( ymin )
-    // TEST( ymax )
-
-    if (logy) {
-      std::tie(ymin,ymax) = std::forward_as_tuple(
-        std::pow(10.,1.05*std::log10(ymin) - 0.05*std::log10(ymax)),
-        std::pow(10.,1.05*std::log10(ymax) - 0.05*std::log10(ymin)));
+    const auto range = canvas_ranges.find(gg.first);
+    if (range!=canvas_ranges.end()) {
+      std::tie(ymin,ymax) = range->second;
     } else {
-      bool both = false;
-      if (ymin > 0.) {
-        if (ymin/ymax < 0.25) {
-          ymin = 0.;
+      if (logy) {
+        std::tie(ymin,ymax) = std::forward_as_tuple(
+          std::pow(10.,1.05*std::log10(ymin) - 0.05*std::log10(ymax)),
+          std::pow(10.,1.05*std::log10(ymax) - 0.05*std::log10(ymin)));
+      } else {
+        bool both = false;
+        if (ymin > 0.) {
+          if (ymin/ymax < 0.25) {
+            ymin = 0.;
+            ymax /= 0.95;
+          } else both = true;
+        } else if (ymax < 0.) {
+          if (ymin/ymax < 0.25) {
+            ymax = 0.;
+            ymin /= 0.95;
+          } else both = true;
+        } else if (ymin==0.) {
           ymax /= 0.95;
-        } else both = true;
-      } else if (ymax < 0.) {
-        if (ymin/ymax < 0.25) {
-          ymax = 0.;
+        } else if (ymax==0.) {
           ymin /= 0.95;
         } else both = true;
-      } else if (ymin==0.) {
-        ymax /= 0.95;
-      } else if (ymax==0.) {
-        ymin /= 0.95;
-      } else both = true;
-      if (both) {
-        std::tie(ymin,ymax) = std::forward_as_tuple(
-          1.05556*ymin - 0.05556*ymax,
-          1.05556*ymax - 0.05556*ymin);
+        if (both) {
+          std::tie(ymin,ymax) = std::forward_as_tuple(
+            1.05556*ymin - 0.05556*ymax,
+            1.05556*ymax - 0.05556*ymin);
+        }
       }
-    }
-    if (hard_ymin) {
-      if (ymin<*hard_ymin) ymin = *hard_ymin;
     }
 
     h->SetTitle(gg.first.c_str());
@@ -251,10 +263,14 @@ int main(int argc, char* argv[]) {
     // h->GetXaxis()->SetRangeUser( edges.front(), edges.back() );
     h->GetYaxis()->SetRangeUser(ymin,ymax);
     if (leg) leg->Draw();
-    canv.SaveAs(ofname);
+    if (!rgi) ofname += ')';
+    canv.Print(ofname.c_str(),("Title:"+gg.first).c_str());
   }
 
-  canv.SaveAs(cat(ofname,']').c_str());
+  ofname.pop_back();
+  std::ofstream pdf(ofname, std::ios_base::app);
+  pdf << '\n';
+  for (int i=0; i<argc; ++i) pdf << argv[i] << '\n';
 
   return 0;
 }

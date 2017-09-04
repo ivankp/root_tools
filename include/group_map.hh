@@ -57,6 +57,7 @@ public:
 
   inline iter begin() noexcept { return groups.begin(); }
   inline iter   end() noexcept { return groups.  end(); }
+  inline auto  size() noexcept { return groups. size(); }
 };
 
 #endif
