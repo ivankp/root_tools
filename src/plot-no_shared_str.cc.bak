@@ -1,0 +1,169 @@
+// Developed by Ivan Pogrebnyak, MSU
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+// #include <tuple>
+// #include <algorithm>
+#include <stdexcept>
+#include <memory>
+#include <regex>
+
+#include <TFile.h>
+#include <TDirectory.h>
+#include <TH1.h>
+#include <TAxis.h>
+// #include <TCanvas.h>
+// #include <TLegend.h>
+// #include <TLine.h>
+// #include <TStyle.h>
+// #include <TPaveStats.h>
+
+#include "catstr.hh"
+#include "tkey.hh"
+
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+
+using std::cout;
+using std::endl;
+using std::cerr;
+using ivanp::cat;
+
+template <typename... Args>
+inline auto exception(const Args&... args) {
+  return std::runtime_error(ivanp::cat(args...));
+}
+
+using shared_str = std::shared_ptr<std::string>;
+
+template <typename T>
+struct deref_adapter {
+  template <typename... Args>
+  inline auto operator()(const Args&... args) const { return T{}(*args...); }
+};
+
+struct flags_t {
+  enum val_f { g, n, t, x, y, z, l, f, d };
+  static constexpr size_t n_val_f = 9;
+  unsigned int s     : 1; // select (drop not matching histograms)
+  unsigned int i     : 1; // invert selection and matching
+  unsigned int m     : 1; // require full match to apply regex_replace
+  unsigned int share : 1; // share string
+  unsigned int copy  : 1; // copy string
+  unsigned int       : 0; // start a new byte
+  val_f        from  : 4; // string source
+  val_f        to    : 4; // string being set
+  signed int from_i  : 8; // python index sign convention
+  flags_t(): s(0), i(0), m(0), share(0), copy(0), from(g), to(g), from_i(-1) { }
+};
+
+struct regex {
+  flags_t flags;
+  std::regex re;
+};
+
+struct hist {
+  TH1 *h;
+  std::string legend;
+  hist(TH1* h): h(h) { }
+
+  std::string get_hist_file_str() {
+    auto* dir = h->GetDirectory();
+    while (!dir->InheritsFrom(TFile::Class())) dir = dir->GetMotherDir();
+    return dir->GetName();
+  }
+  std::string get_hist_dirs_str() {
+    std::string dirs;
+    for ( auto* dir = h->GetDirectory();
+          !dir->InheritsFrom(TFile::Class());
+          dir = dir->GetMotherDir() )
+    {
+      if (dirs.size()) dirs += '/';
+      dirs += dir->GetName();
+    }
+    return dirs;
+  }
+
+  std::string get(hist& h, flags_t::val_f flag) {
+    switch (flag) {
+      case flags_t::g: return { }; break;
+      case flags_t::n: return h->GetName(); break;
+      case flags_t::t: return h->GetTitle(); break;
+      case flags_t::x: return h->GetXaxis()->GetTitle(); break;
+      case flags_t::y: return h->GetYaxis()->GetTitle(); break;
+      case flags_t::z: return h->GetZaxis()->GetTitle(); break;
+      case flags_t::l: return legend; break;
+      case flags_t::f: return get_hist_file_str(); break;
+      case flags_t::d: return get_hist_dirs_str(); break;
+    }
+  }
+};
+
+std::vector<std::vector<hist>> groups; // hist group
+std::unordered_map<
+  shared_str, // group name
+  unsigned,   // group index
+  deref_adapter<std::hash<std::string>>,
+  deref_adapter<std::equal_to<std::string>>
+> groups_map;
+std::vector<regex> res;
+
+using tmp_str = boost::variant<boost::blank, const std::string*, std::string>;
+
+class from_visitor: public boost::static_visitor<const std::string&> {
+  tmp_str& v;    // this variant
+  const hist& h; // histogram
+  flags_t::val_f f; // string value flag
+public:
+  share_visitor(tmp_str& v, const hist& h, flags_t::val_f f)
+  : v(v), h(h), f(f) { }
+  const std::string& operator()(boost::blank) const {
+    v = h.get(flag);
+    return v.get<std::string>();
+  }
+  const std::string& operator()(const std::string* s) const {
+    return *s;
+  }
+  const std::string& operator()(const std::string& s) const {
+    return s;
+  }
+};
+
+bool apply(hist& h, const regex& re, std::string& g) {
+  std::array<std::vector<tmp_str>,flags_t::n_val_f> tmps; // temporary strings
+  for (auto& vec : tmps) { vec.emplace_back(); }
+  
+  re.flags.from = flags_t::n; // TEST
+
+  auto& vec = tmps[re.flags.from];
+  int index = re.flags.from_i;
+  if (index<0) index += vec.size();
+  if (index<0 || (unsigned(index))>vec.size())
+    throw std::runtime_error("out of range string version index");
+
+  auto& tmp = vec[index];
+
+  const std::string& str = boost::apply_visitor(
+    from_visitor(tmp,h,re.flags.from), tmp);
+}
+
+void get_hists(TDirectory* dir) {
+  for (TKey& key : get_keys(dir)) {
+    const TClass* key_class = get_class(key);
+
+    if (key_class->InheritsFrom(TH1::Class())) {
+      TH1* h = read_key<TH1>(key);
+
+      hist wh(
+
+    } else if (key_class->InheritsFrom(TDirectory::Class())) {
+      get_hists(read_key<TDirectory>(key));
+    }
+  }
+}
+
+int main(int argc, char* argv[]) {
+
+}
