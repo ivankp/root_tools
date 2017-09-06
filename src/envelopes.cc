@@ -51,6 +51,10 @@ struct graph {
   const auto* operator->() const noexcept { return &points; }
   ~graph() { delete h; }
 
+  inline TH1* add_hist(const TH1* hist) {
+    return ( h = static_cast<TH1*>(h->Clone()) );
+  }
+
   void operator/=(const graph& g) {
     // for (unsigned i=0, n=points.size(); i<n; ++i) {
     //   auto& p = points[i];
@@ -88,7 +92,7 @@ void loop(TDirectory* dir) {
       }
       auto& g = gg.back(); // this graph
       if (!g->size()) { // new hist
-        (g.h = static_cast<TH1*>(h->Clone()))->SetDirectory(0);
+        g.add_hist(h)->SetDirectory(0);
         g->reserve(n);
         g.edges.reserve(n-1);
         for (int i=0; i<n; ++i)
