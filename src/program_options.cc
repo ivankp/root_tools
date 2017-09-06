@@ -35,7 +35,9 @@ bool opt_match_impl_chars(const char* arg, const char* m) noexcept {
 
 opt_type get_opt_type(const char* arg) noexcept {
   unsigned char n = 0;
-  for (char c=arg[n]; c=='-'; c=arg[++n]) ;
+  char c;
+  for (c=arg[n]; c=='-'; c=arg[++n]) ;
+  if (c=='\0') n = 0;
   switch (n) {
     case  1: return is_number(arg) ? context_opt : short_opt;
     case  2: return long_opt;
@@ -107,8 +109,11 @@ bool program_options::parse(int argc, char const * const * argv,
           check_count(opt);
           if (opt_type==context_opt) val = arg;
           if (opt->is_switch()) {
-            if (val) throw po::error(
-              "switch " + opt->name + " does not take arguments");
+            if (val) {
+              if (opt_type!=context_opt) throw po::error(
+                "switch " + opt->name + " does not take arguments");
+              else val = nullptr;
+            }
             opt->as_switch(), opt = nullptr;
           } else if (val) {
             opt->parse(val), val = nullptr;

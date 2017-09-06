@@ -5,6 +5,10 @@
 
 namespace ivanp { namespace po {
 
+struct no_var_t { } no_var;
+template <typename T> struct is_no_var : std::false_type { };
+template <> struct is_no_var<no_var_t> : std::true_type { };
+
 // Opt def props ---------------------------------------------------
 
 namespace _ {
@@ -102,12 +106,16 @@ public:
 
 private:
   // parse ----------------------------------------------------------
-  template <typename U = parser_t> inline std::enable_if_t<
-    is_just<U>::value && !_is_switch>
+  template <typename P = parser_t> inline std::enable_if_t<
+    is_just<P>::value && !_is_switch>
   parse_impl(const char* arg) { parser_t::type::operator()(arg,*x); }
-  template <typename U = parser_t> inline std::enable_if_t<
-    is_nothing<U>::value && !_is_switch>
-  parse_impl(const char* arg) { ivanp::po::arg_parser(arg,*x); }
+  template <typename P = parser_t> inline std::enable_if_t<
+    is_nothing<P>::value && !_is_switch>
+  parse_impl(const char* arg) {
+    static_assert(!is_no_var<T>::value,
+      ASSERT_MSG("po::no_var variable requires a user-define parser"));
+    ivanp::po::arg_parser(arg,*x);
+  }
   template <bool S = _is_switch> static inline std::enable_if_t<S>
   parse_impl(const char* arg) noexcept { }
 
@@ -144,8 +152,7 @@ public:
   }
 
   inline bool is_multi() const noexcept {
-    // allow `std::vector`s to automatically be multi
-    return disjunction<
+    return disjunction< // allow `std::vector`s to automatically be multi
         is_just<multi_t>, is_std_vector<T>
       >::value;
   }

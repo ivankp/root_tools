@@ -36,9 +36,9 @@ using ivanp::error;
 using shared_str = std::shared_ptr<std::string>;
 
 struct flags {
-  enum field { o = 0, g, n, t, x, y, z, l, d, f };
+  enum field { g, n, t, x, y, z, l, d, f, no_field };
   enum mod_f { no_mod = 0, replace, prepend, append };
-  static constexpr size_t nfields = 9;
+  static constexpr size_t nfields = no_field;
   bool s     : 1; // select (drop not matching histograms)
   bool i     : 1; // invert selection and matching
   bool m     : 1; // require full match to apply regex_replace
@@ -47,7 +47,10 @@ struct flags {
   field from : 4; // field being read
   field to   : 4; // field being set
   int from_i : 8; // field variant, python index sign convention
-  flags(): s(0), i(0), m(0), mod(no_mod), from(o), to(o), from_i(-1) { }
+  flags(): s(0), i(0), m(0), mod(no_mod),
+           from(no_field), to(no_field), from_i(-1) { }
+  inline bool no_from() const noexcept { return from == no_field; }
+  inline bool no_to  () const noexcept { return to   == no_field; }
 };
 
 struct expression: public flags {
@@ -71,11 +74,20 @@ void parse_expression(const char* str, expression& ex) {
   bool last_was_field = false;
   for (char c; (c=*s)!='\0' && !d3; ++s) {
     if (!delim) {
-      flags::field f = flags::o;
+      flags::field f = flags::no_field;
       switch (c) {
-        case 's': ex.s = true; continue;
-        case 'i': ex.i = true; continue;
-        case 'm': ex.m = true; continue;
+        case 's':
+          if (!ex.no_from()) throw bad_expression(
+            str,"\'s\' must appear before field flags");
+          ex.s = true; continue;
+        case 'i':
+          if (!ex.no_from()) throw bad_expression(
+            str,"\'i\' must appear before field flags");
+          ex.i = true; continue;
+        case 'm':
+          if (!ex.no_from()) throw bad_expression(
+            str,"\'m\' must appear before field flags");
+          ex.m = true; continue;
         case 'g': f = flags::g; break;
         case 't': f = flags::t; break;
         case 'x': f = flags::x; break;
@@ -87,22 +99,23 @@ void parse_expression(const char* str, expression& ex) {
         case 'd': f = flags::d; break;
         case '+': { // concatenate
           if (ex.mod) throw bad_expression(str,"too many \'+\'");
-          if (ex.to) ex.mod = flags::append;
-          else if (ex.from) ex.mod = flags::prepend;
+          if (!ex.no_to()) ex.mod = flags::append;
+          else if (!ex.no_from()) ex.mod = flags::prepend;
           else throw bad_expression(str,"\'+\' before first field flag");
+          last_was_field = false;
           continue;
         }
         default: break;
       }
-      if (f) {
-        if (!ex.from) ex.from = f;
-        else if (!ex.to) ex.to = f;
+      if (f != flags::no_field) {
+        if (ex.no_from()) ex.from = f;
+        else if (ex.no_to()) ex.to = f;
         else throw bad_expression(str,"too many field flags");
         last_was_field = true;
       } else {
         if (strchr("/|:",c)) delim = c, d1 = s; // first delimeter
         else if ((std::isdigit(c) || c=='-') && last_was_field) {
-          if (ex.to) throw bad_expression(
+          if (!ex.no_to()) throw bad_expression(
             str,"only first field may be indexed");
           std::string num_str{c};
           for (++s; std::isdigit(c=*s); ++s) num_str += c;
@@ -125,11 +138,11 @@ void parse_expression(const char* str, expression& ex) {
     }
   } // end for
 
-  if (ex.mod && !ex.to) throw bad_expression(
+  if (ex.mod && ex.no_to()) throw bad_expression(
     str,"\'+\' requires both fields stated explicitly");
 
-  if (!ex.from) ex.from = flags::g; // default to group for 1st
-  if (!ex.to) ex.to = ex.from; // default to same for 2nd
+  if (ex.no_from()) ex.from = flags::g; // default to group for 1st
+  if (ex.no_to()) ex.to = ex.from; // default to same for 2nd
 
   std::cout <<'\"'<< str << "\" split into:\n";
   if (d1)

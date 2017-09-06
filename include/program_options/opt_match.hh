@@ -100,16 +100,18 @@ inline opt_match_type make_opt_match(T&& x) {
     opt_match_tag<std::decay_t<T>>{});
 }
 
-template <typename T, typename Tag>
+template <typename T, typename Tag> // default factory
 opt_match_type make_opt_match_impl(T&& x, Tag) {
   using type = typename Tag::type;
   return { new opt_match<type>( std::forward<T>(x) ), context_opt };
 }
-template <typename T>
-opt_match_type make_opt_match_impl(T&& x, opt_match_tag<char>) noexcept {
+template <typename T> // <char> factory
+opt_match_type make_opt_match_impl(T&& x, opt_match_tag<char>) {
+  if (x=='\0') throw po::error("NULL character used as short option matcher");
+  if (x=='-') throw po::error("all dashes matches only as context option");
   return { new opt_match<char>( x ), short_opt };
 }
-template <typename T, typename TagT>
+template <typename T, typename TagT> // <string> factory
 std::enable_if_t<std::is_convertible<TagT,std::string>::value,opt_match_type>
 make_opt_match_impl(T&& x, opt_match_tag<TagT>) {
   const opt_type t = get_opt_type(x);
@@ -124,6 +126,7 @@ make_opt_match_impl(T&& x, opt_match_tag<TagT>) {
     return { new opt_match<regex_t>( std::forward<T>(x) ), t };
   else
 #endif
+  if (x[0]=='\0') throw po::error("NULL string used as option matcher");
   if (t==short_opt) {
     if (x[2]!='\0') throw po::error(
       "short arg ",x," defined with more than one char");
