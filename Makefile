@@ -36,7 +36,8 @@ NODEPS := clean
 
 all: $(EXES)
 
-bin/plot bin/envelopes: $(BLD)/program_options.o
+bin/plot: $(BLD)/program_options.o $(BLD)/plot_regex.o
+bin/envelopes: $(BLD)/program_options.o
 
 #Don't create dependencies when we're cleaning, for instance
 ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))

@@ -1,6 +1,7 @@
 #ifndef IVANP_ERROR_HH
 #define IVANP_ERROR_HH
 
+#include <stdexcept>
 #include "string.hh"
 
 namespace ivanp {

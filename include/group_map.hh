@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <stdexcept>
 
 #include "error.hh"
 
