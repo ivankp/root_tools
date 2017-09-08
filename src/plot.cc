@@ -144,10 +144,7 @@ int main(int argc, char* argv[]) {
       .parse(argc,argv,true)) return 0;
 
     exprs.reserve(expr_args.size());
-    for (const auto& expr : expr_args) {
-      exprs.emplace_back();
-      parse_expression(expr,exprs.back());
-    }
+    for (const auto& expr : expr_args) exprs.emplace_back(expr);
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;
     return 1;

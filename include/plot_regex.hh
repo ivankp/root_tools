@@ -28,6 +28,9 @@ struct flags {
 struct plot_regex: public flags {
   std::regex re;
   std::vector<std::string> blocks;
+  // parsing constructor
+  plot_regex(const char* str);
+  // apply regex
   bool match(const std::string&) const;
   std::string replace(const std::string&) const;
 };
@@ -37,8 +40,6 @@ struct bad_expression : ivanp::error {
   bad_expression(const char* str, const Args&... args)
   : ivanp::error("in \"",str,"\": ",args...) { }
 };
-
-void parse_expression(const char* str, plot_regex& ex);
 
 #endif
 

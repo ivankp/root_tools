@@ -11,29 +11,28 @@ using std::cerr;
 
 using namespace ivanp;
 
-void parse_expression(const char* str, plot_regex& ex) {
+plot_regex::plot_regex(const char* str) {
   if (!str || *str=='\0') throw error("blank expression");
   char delim = 0;
   bool last_was_field = false, last_was_delim = false;
   unsigned esc = 0;
-  std::vector<std::string> blocks;
   const char *s = str;
   for (char c; (c=*s); ++s) {
     if (!delim) {
       flags::field f = flags::no_field;
       switch (c) {
         case 's':
-          if (!ex.no_from()) throw bad_expression(
+          if (!no_from()) throw bad_expression(
             str,"\'s\' must appear before field flags");
-          ex.s = true; continue;
+          this->s = true; continue;
         case 'i':
-          if (!ex.no_from()) throw bad_expression(
+          if (!no_from()) throw bad_expression(
             str,"\'i\' must appear before field flags");
-          ex.i = true; continue;
+          this->i = true; continue;
         case 'm':
-          if (!ex.no_from()) throw bad_expression(
+          if (!no_from()) throw bad_expression(
             str,"\'m\' must appear before field flags");
-          ex.m = true; continue;
+          this->m = true; continue;
         case 'g': f = flags::g; break;
         case 't': f = flags::t; break;
         case 'x': f = flags::x; break;
@@ -44,9 +43,9 @@ void parse_expression(const char* str, plot_regex& ex) {
         case 'f': f = flags::f; break;
         case 'd': f = flags::d; break;
         case '+': { // concatenate
-          if (ex.add) throw bad_expression(str,"too many \'+\'");
-          if (!ex.no_to()) ex.add = flags::append;
-          else if (!ex.no_from()) ex.add = flags::prepend;
+          if (add) throw bad_expression(str,"too many \'+\'");
+          if (!no_to()) add = flags::append;
+          else if (!no_from()) add = flags::prepend;
           else throw bad_expression(str,"\'+\' before first field flag");
           last_was_field = false;
           continue;
@@ -54,8 +53,8 @@ void parse_expression(const char* str, plot_regex& ex) {
         default: break;
       }
       if (f != flags::no_field) {
-        if (ex.no_from()) ex.from = f;
-        else if (ex.no_to()) ex.to = f;
+        if (no_from()) from = f;
+        else if (no_to()) to = f;
         else throw bad_expression(str,"too many field flags");
         last_was_field = true;
       } else {
@@ -63,7 +62,7 @@ void parse_expression(const char* str, plot_regex& ex) {
           delim = c; // first delimeter
           last_was_delim = true;
         } else if ((std::isdigit(c) || c=='-') && last_was_field) {
-          if (!ex.no_to()) throw bad_expression(
+          if (!no_to()) throw bad_expression(
             str,"only first field may be indexed");
           std::string num_str{c};
           for (++s; std::isdigit(c=*s); ++s) num_str += c;
@@ -74,8 +73,8 @@ void parse_expression(const char* str, plot_regex& ex) {
           } catch (...) {
             throw bad_expression(str,"index ",num_str," not convertible to int");
           }
-          ex.from_i = num;
-          if (ex.from_i!=num) throw bad_expression(
+          from_i = num;
+          if (from_i!=num) throw bad_expression(
             str,"index ",num_str," out of bound");
         } else throw bad_expression(str,"unrecognized flag \'",c,'\'');
         last_was_field = false;
@@ -102,23 +101,23 @@ void parse_expression(const char* str, plot_regex& ex) {
     }
   } // end for
 
-  if (ex.add && ex.no_to()) throw bad_expression(
+  if (add && no_to()) throw bad_expression(
     str,"\'+\' requires both fields stated explicitly");
 
-  if (!ex.m && blocks.size()<2) ex.m = true;
+  if (!m && blocks.size()<2) m = true;
 
-  if (ex.no_from()) ex.from = flags::g; // default to group for 1st
-  if (ex.no_to()) ex.to = ex.from; // default to same for 2nd
+  if (no_from()) from = flags::g; // default to group for 1st
+  if (no_to()) to = from; // default to same for 2nd
 
-  if (ex.same()) {
+  if (same()) {
     if (blocks.empty()) throw bad_expression(
       str,"single field expression without matching pattern");
-    else if (!ex.s && blocks.size()<2) throw bad_expression(
+    else if (!this->s && blocks.size()<2) throw bad_expression(
       str,"single field matching expression without \'s\' or argument");
   }
 
-  if (ex.m) {
-    if (!ex.same())
+  if (m) {
+    if (!same())
       cerr << "\033[33mWarning\033[0m: in " << str
            << " matching expression with distinct fields" << endl;
     if (blocks.size()>=2 && !blocks[1].empty())
@@ -128,28 +127,39 @@ void parse_expression(const char* str, plot_regex& ex) {
 
   std::cout <<'\"'<< str << "\" split into:\n";
   for (const auto& b : blocks) std::cout << "  " << b << std::endl;
-  TEST( ex.add )
-  TEST( ex.m )
-  TEST( ex.from )
-  TEST( ex.to )
+  TEST( add )
+  TEST( m )
+  TEST( from )
+  TEST( to )
 
   if (!blocks.empty()) {
     using namespace std::regex_constants;
     syntax_option_type flags = optimize;
-    if (ex.m) flags |= nosubs;
-    ex.re.assign( blocks.front(), flags );
-    ex.blocks = std::move(blocks);
+    if (m) flags |= nosubs;
+    try {
+      re.assign( blocks.front(), flags );
+    } catch (const std::regex_error& e) {
+      throw bad_expression(str,e.what());
+    }
   }
 }
 
 bool plot_regex::match(const std::string& str) const {
   using namespace std::regex_constants;
-  return regex_match( str, re, format_sed | match_any );
+  try {
+    return regex_match( str, re, format_sed | match_any );
+  } catch (const std::exception& e) {
+    throw error("matching ",str," to ",blocks.front(),": ",e.what());
+  }
 }
 
 std::string plot_regex::replace(const std::string& str) const {
   TEST( blocks[0] )
   TEST( blocks[1] )
   using namespace std::regex_constants;
-  return regex_replace( str, re, blocks[1], format_sed );
+  try {
+    return regex_replace( str, re, blocks[1], format_sed );
+  } catch (const std::exception& e) {
+    throw error("replacing ",str," with ",blocks.front(),": ",e.what());
+  }
 }
