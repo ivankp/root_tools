@@ -153,4 +153,8 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  if (!exprs.at(0).m) {
+    TEST( exprs[0].replace("jets_N_incl") );
+  }
+
 }
