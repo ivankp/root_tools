@@ -144,21 +144,17 @@ plot_regex::plot_regex(const char* str) {
   }
 }
 
-bool plot_regex::match(const std::string& str) const {
-  // using namespace boost::regex_constants;
+shared_str plot_regex::operator()(shared_str str) {
+  // http://www.boost.org/doc/libs/1_65_1/libs/regex/doc/html/
+  //   boost_regex/ref/match_results.html
   try {
-    return regex_match( str, re );
+    using namespace boost::regex_constants;
+    if (!regex_search( *str, match, re )) return { };
+    // if (match.empty()) return { };
+    if (m) return str;
+    return std::make_shared<typename shared_str::element_type>(
+      match.format( blocks[1], format_all ) );
   } catch (const std::exception& e) {
-    throw error("matching ",str," to ",blocks.front(),": ",e.what());
-  }
-}
-
-std::string plot_regex::replace(const std::string& str) const {
-  TEST( blocks[0] )
-  TEST( blocks[1] )
-  try {
-    return regex_replace( str, re, blocks[1] );
-  } catch (const std::exception& e) {
-    throw error("replacing ",str," with ",blocks.front(),": ",e.what());
+    throw error("applying \"",blocks[0],"\" to \"",*str,"\": ",e.what());
   }
 }

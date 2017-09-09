@@ -31,8 +31,6 @@ using std::cerr;
 using ivanp::cat;
 using ivanp::error;
 
-using shared_str = std::shared_ptr<std::string>;
-
 std::vector<plot_regex> exprs;
 
 class hist {
@@ -142,6 +140,7 @@ int main(int argc, char* argv[]) {
     if (program_options()
       (expr_args,'r',"regular expressions")
       .help_suffix(
+        "Boost extended regex format:\n"
         "http://www.boost.org/doc/libs/1_65_1/libs/regex/doc/html/"
         "boost_regex/format/boost_format_syntax.html\n"
       )
@@ -154,8 +153,12 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  if (!exprs.at(0).m) {
-    TEST( exprs[0].replace("jets_N_incl") );
+  auto str = exprs[0](std::make_shared<std::string>("jets_N_incl"));
+
+  if (!str) {
+    cout << "Didn't match" << endl;
+  } else {
+    cout << "Result: " << *str << endl;
   }
 
 }

@@ -1,8 +1,11 @@
 #ifndef IVANP_PLOT_REGEX_HH
 #define IVANP_PLOT_REGEX_HH
 
+#include <memory>
 #include <boost/regex.hpp>
 #include "error.hh"
+
+using shared_str = std::shared_ptr<std::string>;
 
 struct flags {
   enum field { g, n, t, x, y, z, l, d, f, no_field };
@@ -27,12 +30,11 @@ struct flags {
 
 struct plot_regex: public flags {
   boost::regex re;
+  boost::smatch match;
   std::vector<std::string> blocks;
-  // parsing constructor
-  plot_regex(const char* str);
-  // apply regex
-  bool match(const std::string&) const;
-  std::string replace(const std::string&) const;
+
+  plot_regex(const char* str); // parsing constructor
+  shared_str operator()(shared_str); // apply regex
 };
 
 struct bad_expression : ivanp::error {
