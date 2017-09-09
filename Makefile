@@ -17,7 +17,7 @@ rpath_script := ldd `root-config --libdir`/libTreePlayer.so \
 ROOT_LIBS += $(shell $(rpath_script))
 
 C_plot := $(ROOT_CFLAGS)
-L_plot := $(ROOT_LIBS)
+L_plot := $(ROOT_LIBS) -lboost_regex
 
 C_envelopes := $(ROOT_CFLAGS)
 L_envelopes := $(ROOT_LIBS)

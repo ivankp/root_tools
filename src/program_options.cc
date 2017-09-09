@@ -1,9 +1,13 @@
 #include <iostream>
 #include <cstring>
+#include <cctype>
 #include <stdexcept>
 
 #define IVANP_PROGRAM_OPTIONS_CC
 #include "program_options.hh"
+
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
 
 using std::cout;
 using std::cerr;
@@ -202,14 +206,14 @@ std::vector<unsigned> wrap(std::string& str, unsigned w) {
   std::vector<unsigned> br;
   unsigned d = 0, l = 0;
   for (unsigned i=0, n=str.size(); i<n; ++i, ++l) {
-    if (str[i]==' ') {
+    if (isspace(str[i])) {
       if (l>w) {
         if (l==i-d) str[i] = '\n', l = 0, br.push_back(i);
         else str[d] = '\n', l = i-d, br.push_back(d);
       }
       d = i;
     } else if (str[i]=='\n') {
-      if (l>w) str[d] = '\n', br.push_back(d);
+      if (l>w && std::isspace(str[d])) str[d] = '\n', br.push_back(d);
       d = i, l = 0;
       br.push_back(d);
     }
@@ -241,8 +245,10 @@ const std::string& fmt_descr(std::string& str, unsigned t, unsigned w) {
 
 void program_options::help() {
   static constexpr unsigned line_width = 80;
-  wrap(help_prefix_str,line_width);
-  if (help_prefix_str.size()) cout << help_prefix_str << "\n\n";
+  if (help_prefix_str.size()) {
+    wrap(help_prefix_str,line_width);
+    cout << help_prefix_str << "\n\n";
+  }
 
   cout << "Options:\n";
 
@@ -287,8 +293,10 @@ void program_options::help() {
       "  ^ positional\n";
   }
 
-  wrap(help_suffix_str,line_width);
-  if (help_suffix_str.size()) cout <<'\n'<< help_suffix_str << '\n';
+  if (help_suffix_str.size()) {
+    wrap(help_suffix_str,line_width);
+    cout <<'\n'<< help_suffix_str << '\n';
+  }
   cout.flush();
 }
 

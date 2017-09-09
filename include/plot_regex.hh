@@ -1,7 +1,7 @@
 #ifndef IVANP_PLOT_REGEX_HH
 #define IVANP_PLOT_REGEX_HH
 
-#include <regex>
+#include <boost/regex.hpp>
 #include "error.hh"
 
 struct flags {
@@ -26,7 +26,7 @@ struct flags {
 };
 
 struct plot_regex: public flags {
-  std::regex re;
+  boost::regex re;
   std::vector<std::string> blocks;
   // parsing constructor
   plot_regex(const char* str);

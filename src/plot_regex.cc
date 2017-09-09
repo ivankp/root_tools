@@ -133,21 +133,21 @@ plot_regex::plot_regex(const char* str) {
   TEST( to )
 
   if (!blocks.empty()) {
-    using namespace std::regex_constants;
+    using namespace boost::regex_constants;
     syntax_option_type flags = optimize;
     if (m) flags |= nosubs;
     try {
       re.assign( blocks.front(), flags );
-    } catch (const std::regex_error& e) {
+    } catch (const std::exception& e) {
       throw bad_expression(str,e.what());
     }
   }
 }
 
 bool plot_regex::match(const std::string& str) const {
-  using namespace std::regex_constants;
+  // using namespace boost::regex_constants;
   try {
-    return regex_match( str, re, format_sed | match_any );
+    return regex_match( str, re );
   } catch (const std::exception& e) {
     throw error("matching ",str," to ",blocks.front(),": ",e.what());
   }
@@ -156,9 +156,8 @@ bool plot_regex::match(const std::string& str) const {
 std::string plot_regex::replace(const std::string& str) const {
   TEST( blocks[0] )
   TEST( blocks[1] )
-  using namespace std::regex_constants;
   try {
-    return regex_replace( str, re, blocks[1], format_sed );
+    return regex_replace( str, re, blocks[1] );
   } catch (const std::exception& e) {
     throw error("replacing ",str," with ",blocks.front(),": ",e.what());
   }

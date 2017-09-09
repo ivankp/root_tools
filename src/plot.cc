@@ -17,13 +17,13 @@
 // #include <TStyle.h>
 // #include <TPaveStats.h>
 
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+
 #include "program_options.hh"
 #include "tkey.hh"
 #include "group_map.hh"
 #include "plot_regex.hh"
-
-#define TEST(var) \
-  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
 
 using std::cout;
 using std::endl;
@@ -141,6 +141,10 @@ int main(int argc, char* argv[]) {
     using namespace ivanp::po;
     if (program_options()
       (expr_args,'r',"regular expressions")
+      .help_suffix(
+        "http://www.boost.org/doc/libs/1_65_1/libs/regex/doc/html/"
+        "boost_regex/format/boost_format_syntax.html\n"
+      )
       .parse(argc,argv,true)) return 0;
 
     exprs.reserve(expr_args.size());
