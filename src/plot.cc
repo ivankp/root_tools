@@ -133,6 +133,9 @@ void loop(TDirectory* dir) { // LOOP
   }
 }
 
+#define BOOST_REGEX_URL \
+  "http://www.boost.org/libs/regex/doc/html/boost_regex/"
+
 int main(int argc, char* argv[]) {
   std::vector<const char*> expr_args;
 
@@ -141,9 +144,12 @@ int main(int argc, char* argv[]) {
     if (program_options()
       (expr_args,'r',"regular expressions")
       .help_suffix(
-        "Boost extended regex format:\n"
-        "http://www.boost.org/doc/libs/1_65_1/libs/regex/doc/html/"
-        "boost_regex/format/boost_format_syntax.html\n"
+        "Regex expression syntax:\n"
+        BOOST_REGEX_URL "syntax/perl_syntax.html\n"
+        "Regex captures syntax:\n"
+        BOOST_REGEX_URL "captures.html\n"
+        "Regex format string syntax:\n"
+        BOOST_REGEX_URL "format/boost_format_syntax.html\n"
       )
       .parse(argc,argv,true)) return 0;
 

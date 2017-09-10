@@ -206,14 +206,16 @@ std::vector<unsigned> wrap(std::string& str, unsigned w) {
   std::vector<unsigned> br;
   unsigned d = 0, l = 0;
   for (unsigned i=0, n=str.size(); i<n; ++i, ++l) {
-    if (isspace(str[i])) {
+    char c = str[i];
+    if (c==' '||c=='\t') {
       if (l>w) {
-        if (l==i-d) str[i] = '\n', l = 0, br.push_back(i);
+        if (l==i-d) c = '\n', l = 0, br.push_back(i);
         else str[d] = '\n', l = i-d, br.push_back(d);
       }
       d = i;
-    } else if (str[i]=='\n') {
-      if (l>w && std::isspace(str[d])) str[d] = '\n', br.push_back(d);
+    } else if (c=='\n') {
+      char& cd = str[d];
+      if (l>w && (cd==' '||cd=='\t')) cd = '\n', br.push_back(d);
       d = i, l = 0;
       br.push_back(d);
     }
