@@ -127,12 +127,14 @@ plot_regex::plot_regex(const char* str) {
            << " matching expression with formatting pattern" << endl;
   }
 
+  /*
   std::cout <<'\"'<< str << "\" split into:\n";
   for (const auto& b : blocks) std::cout << "  " << b << std::endl;
   TEST( add )
   TEST( m )
   TEST( from )
   TEST( to )
+  */
 
   if (!blocks.empty()) {
     using namespace boost::regex_constants;
@@ -146,30 +148,6 @@ plot_regex::plot_regex(const char* str) {
   }
 }
 
-/*
-shared_str plot_regex::operator()(shared_str str) {
-  // http://www.boost.org/doc/libs/1_65_1/libs/regex/doc/html/
-  //   boost_regex/ref/match_results.html
-  // https://stackoverflow.com/q/46126665/2640636
-  try {
-    using namespace boost::regex_constants;
-    boost::sregex_iterator begin(str->begin(), str->end(), re), end;
-    if (begin==end) return { };
-    for (auto it=begin; it!=end; ++it)
-
-
-    /
-    if (!regex_search( *str, match, re )) return { };
-    // if (match.empty()) return { };
-    if (m) return str;
-    /
-    return make_shared_str( match.format( blocks[1], format_all ) );
-  } catch (const std::exception& e) {
-    throw error("applying \"",blocks[0],"\" to \"",*str,"\": ",e.what());
-  }
-}
-*/
-
 shared_str plot_regex::operator()(shared_str str) {
   auto last = str->cbegin();
   using str_t = typename shared_str::element_type;
@@ -180,7 +158,6 @@ shared_str plot_regex::operator()(shared_str str) {
   if (m || blocks.size() < 2) return str;
 
   auto result = make_shared_str();
-  // BOOST_REGEX_DETAIL_NS::string_out_iterator<str_t> out(*result);
   auto out = std::back_inserter(*result);
   do {
     using namespace boost::regex_constants;
@@ -191,5 +168,12 @@ shared_str plot_regex::operator()(shared_str str) {
     ++it;
   } while (it!=end);
   std::copy(last, str->cend(), out); 
+
+  switch (add) {
+    case no_add  : break;
+    case prepend : result->append(*str); break;
+    case append  : result->assign(*str + *result); break;
+  }
+
   return result;
 }
