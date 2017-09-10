@@ -32,7 +32,7 @@ struct plot_regex: public flags {
   std::vector<std::string> blocks;
 
   plot_regex(const char* str); // parsing constructor
-  shared_str operator()(shared_str); // apply regex
+  shared_str operator()(shared_str) const; // apply regex
 };
 
 struct bad_expression : ivanp::error {

@@ -72,7 +72,7 @@ public:
   TH1 *h;
   shared_str legend;
   hist(TH1* h): h(h) { }
-  // hist(const hist&) = default;
+  hist(const hist&) = delete;
   hist(hist&& o): h(o.h), legend(std::move(o.legend)) { o.h = nullptr; }
 
   inline TH1& operator*() noexcept { return *h; }
@@ -85,6 +85,8 @@ public:
     std::array<std::vector<shared_str>,flags::nfields> tmps;
     for (auto& vec : tmps) { vec.emplace_back(); }
 
+#define FIELD(I) std::get<flags::I>(tmps).back()
+
     for (const plot_regex& expr : exprs) {
       auto& vec = tmps[expr.from];
       int index = expr.from_i;
@@ -95,20 +97,29 @@ public:
       auto& str = vec[index];
       if (!str) { // initialize string
         if (expr.from == flags::g) {
-          auto& name = tmps[flags::n].back();
-          if (!name) str = name = init(flags::n); // default g to n
+          auto& name = FIELD(n);
+          if (!name) name = init(flags::n); // default g to n
+          str = name;
         } else str = init(expr.from);
       }
 
-      cout << '[' << expr.from << "] " << *str << endl;
-
-      // TODO: apply regex
+      auto result = expr(str);
+      if (!result) return false;
+      vec.emplace_back(std::move(result));
 
     } // end expressions loop
 
-    if (!(group == std::move(tmps[flags::g].back())))
-      if (!(group == std::move(tmps[flags::n].back()))) // default g to n
+    if (!(group = std::move(FIELD(g))))
+      if (!(group = std::move(FIELD(n)))) // default g to n
         group = init(flags::n);
+
+    if (FIELD(t)) h->SetTitle (FIELD(t)->c_str());
+    if (FIELD(x)) h->SetXTitle(FIELD(x)->c_str());
+    if (FIELD(y)) h->SetYTitle(FIELD(y)->c_str());
+    if (FIELD(z)) h->SetZTitle(FIELD(z)->c_str());
+    if (FIELD(l)) legend = std::move(FIELD(z));
+
+#undef FIELD
 
     return true;
   }
@@ -130,11 +141,7 @@ void loop(TDirectory* dir) { // LOOP
       shared_str group;
 
       if ( _h(group) ) { // add hist if it passes selection
-        if (!group) {
-          cerr << "group was not assigned" << endl;
-          continue;
-        }
-        hist_map[group].emplace_back(std::move(_h));
+        hist_map[std::move(group)].emplace_back(std::move(_h));
       } else continue;
 
     } else if (key_class->InheritsFrom(TDirectory::Class())) { // DIR
@@ -192,7 +199,6 @@ int main(int argc, char* argv[]) {
   for (const auto& g : hist_map) {
     cout << *g.first << '\n';
   }
-  cout.flush();
 
   // auto str = make_shared_str("jets_N_incl");
   // auto out = exprs[0](str);

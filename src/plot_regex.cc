@@ -148,13 +148,13 @@ plot_regex::plot_regex(const char* str) {
   }
 }
 
-shared_str plot_regex::operator()(shared_str str) {
+shared_str plot_regex::operator()(shared_str str) const {
   auto last = str->cbegin();
   using str_t = typename shared_str::element_type;
   boost::regex_iterator<str_t::const_iterator,str_t::value_type>
     it(last, str->cend(), re), end;
 
-  if (it==end) return { };
+  if (it==end) return s ? shared_str{} : str;
   if (m || blocks.size() < 2) return str;
 
   auto result = make_shared_str();

@@ -17,8 +17,10 @@ template <typename T>
 class TList_cast {
   TList* list;
   using list_iter = decltype(list->begin());
-  struct iter {
+  class iter {
     list_iter it;
+  public:
+    iter(list_iter it): it(it) { }
     inline T& operator*() noexcept { return static_cast<T&>(**it); }
     inline T* operator->() noexcept { return static_cast<T*>(*it); }
     inline iter& operator++() noexcept(noexcept(++it)) { ++it; return *this; }
@@ -29,8 +31,8 @@ class TList_cast {
   };
 public:
   TList_cast(TList* list): list(list) { }
-  iter begin() { return { list->begin() }; }
-  iter   end() { return { list->  end() }; }
+  iter begin() { return list->begin(); }
+  iter   end() { return list->  end(); }
 };
 #endif
 
