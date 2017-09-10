@@ -65,20 +65,22 @@ class hist {
     }
   }
   inline shared_str init(flags::field field) {
-    return std::make_shared<std::string>(init_impl(field));
+    return make_shared_str(init_impl(field));
   }
 
 public:
   TH1 *h;
   shared_str legend;
   hist(TH1* h): h(h) { }
-  hist(const hist&) = default;
-  hist(hist&&) = default;
+  // hist(const hist&) = default;
+  hist(hist&& o): h(o.h), legend(std::move(o.legend)) { o.h = nullptr; }
 
   inline TH1& operator*() noexcept { return *h; }
   inline TH1* operator->() noexcept { return h; }
 
   bool operator()(shared_str& group) {
+    if (exprs.empty()) { group = init(flags::n); return true; }
+
     // temporary strings
     std::array<std::vector<shared_str>,flags::nfields> tmps;
     for (auto& vec : tmps) { vec.emplace_back(); }
@@ -104,15 +106,19 @@ public:
 
     } // end expressions loop
 
+    if (!(group == std::move(tmps[flags::g].back())))
+      if (!(group == std::move(tmps[flags::n].back()))) // default g to n
+        group = init(flags::n);
+
     return true;
   }
 }; // end hist
 
 group_map<
   hist, shared_str,
-  deref_adapter<std::hash<std::string>>,
-  deref_adapter<std::equal_to<std::string>>
-> groups_map;
+  deref_pred<std::hash<std::string>>,
+  deref_pred<std::equal_to<std::string>>
+> hist_map;
 
 void loop(TDirectory* dir) { // LOOP
   for (TKey& key : get_keys(dir)) {
@@ -124,7 +130,11 @@ void loop(TDirectory* dir) { // LOOP
       shared_str group;
 
       if ( _h(group) ) { // add hist if it passes selection
-        groups_map[group].emplace_back(std::move(_h));
+        if (!group) {
+          cerr << "group was not assigned" << endl;
+          continue;
+        }
+        hist_map[group].emplace_back(std::move(_h));
       } else continue;
 
     } else if (key_class->InheritsFrom(TDirectory::Class())) { // DIR
@@ -137,11 +147,15 @@ void loop(TDirectory* dir) { // LOOP
   "http://www.boost.org/libs/regex/doc/html/boost_regex/"
 
 int main(int argc, char* argv[]) {
+  const char* ofname;
+  std::vector<const char*> ifnames;
   std::vector<const char*> expr_args;
 
   try {
     using namespace ivanp::po;
     if (program_options()
+      (ifnames,'i',"input files (.root)",req(),pos())
+      (ofname,'o',"output file (.pdf)",req())
       (expr_args,'r',"regular expressions")
       .help_suffix(
         "Regex expression syntax:\n"
@@ -153,6 +167,9 @@ int main(int argc, char* argv[]) {
       )
       .parse(argc,argv,true)) return 0;
 
+    if (!ivanp::ends_with(ofname,".pdf")) throw ivanp::error(
+      "output file name must end in \".pdf\"");
+
     exprs.reserve(expr_args.size());
     for (const auto& expr : expr_args) exprs.emplace_back(expr);
   } catch (const std::exception& e) {
@@ -160,13 +177,30 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto str = make_shared_str("jets_N_incl");
-  auto out = exprs[0](str);
+  std::vector<std::unique_ptr<TFile>> ifiles;
+  ifiles.reserve(ifnames.size());
+  for (const char* name : ifnames) {
+    ifiles.emplace_back(std::make_unique<TFile>(name));
+    TFile* f = ifiles.back().get();
+    if (f->IsZombie()) return 1;
+    cout << "\033[34mInput file:\033[0m " << f->GetName() << endl;
 
-  if (!out) {
-    cout << "Didn't match" << endl;
-  } else {
-    cout << ( out==str ? "Unchanged: " : "Result: " ) << *out << endl;
+    loop(f);
   }
+
+  cout << "\nGroups:\n";
+  for (const auto& g : hist_map) {
+    cout << *g.first << '\n';
+  }
+  cout.flush();
+
+  // auto str = make_shared_str("jets_N_incl");
+  // auto out = exprs[0](str);
+  //
+  // if (!out) {
+  //   cout << "Didn't match" << endl;
+  // } else {
+  //   cout << ( out==str ? "Unchanged: " : "Result: " ) << *out << endl;
+  // }
 
 }

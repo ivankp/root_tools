@@ -2,6 +2,7 @@
 #define IVANP_STRING_HH
 
 #include <string>
+#include <cstring>
 #include <sstream>
 
 namespace ivanp {
@@ -26,11 +27,18 @@ inline std::string cat(const TT&... tt) {
   return ss.str();
 }
 
-template <typename Str, unsigned N>                                             
-bool starts_with(const Str& str, const char(&prefix)[N]) {                      
-  for (unsigned i=0; i<N-1; ++i)                                                
-    if (str[i]=='\0' || str[i]!=prefix[i]) return false;                        
-  return true;                                                                  
+template <typename Str, unsigned N>
+inline bool starts_with(const Str& str, const char(&prefix)[N]) {
+  for (unsigned i=0; i<N-1; ++i)
+    if (str[i]!=prefix[i]) return false;
+  return true;
+}
+
+template <unsigned N>
+inline bool ends_with(const char* str, const char(&suffix)[N]) {
+  const unsigned len = strlen(str);
+  if (len<N-1) return false;
+  return starts_with(str+(len-N+1),suffix);
 }
 
 }

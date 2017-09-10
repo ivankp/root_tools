@@ -8,12 +8,26 @@
 #include "error.hh"
 
 template <typename T>
-struct deref_adapter : T {
+struct deref_pred : T {
   using T::T;
   template <typename... Args>
   inline auto operator()(const Args&... args) const {
     return T::operator()(*args...);
   }
+};
+
+template <typename Iterator>
+class deref_iterator {
+  Iterator it;
+public:
+  deref_iterator(Iterator it): it(it) { }
+  inline auto& operator*() noexcept { return **it; }
+  inline auto* operator->() noexcept { return *it; }
+  inline auto& operator++() noexcept(noexcept(++it)) { ++it; return *this; }
+  inline bool operator==(const deref_iterator& r) const noexcept
+  { return it == r.it; }
+  inline bool operator!=(const deref_iterator& r) const noexcept
+  { return it != r.it; }
 };
 
 template <typename T, typename Key = std::string,
@@ -23,20 +37,11 @@ class group_map {
   std::unordered_map<Key,std::vector<T>,Hash,KeyEqual> map;
   std::vector<typename decltype(map)::iterator> groups;
 
-  class iter {
-    typename decltype(groups)::iterator it;
-  public:
-    iter(decltype(it) it): it(it) { }
-    inline auto& operator*() noexcept { return **it; }
-    inline auto* operator->() noexcept { return *it; }
-    inline iter& operator++() noexcept(noexcept(++it)) { ++it; return *this; }
-    inline bool operator==(const iter& r) const noexcept { return it == r.it; }
-    inline bool operator!=(const iter& r) const noexcept { return it != r.it; }
-  };
-
   class error : ivanp::error { using ivanp::error::error; };
 
 public:
+  using iterator = deref_iterator<typename decltype(groups)::iterator>;
+
   template <typename K>
   auto& operator[](K&& key) {
     auto it = map.emplace(
@@ -54,9 +59,9 @@ public:
     }
   }
 
-  inline iter begin() noexcept { return groups.begin(); }
-  inline iter   end() noexcept { return groups.  end(); }
-  inline auto  size() noexcept { return groups. size(); }
+  inline iterator begin() noexcept { return groups.begin(); }
+  inline iterator   end() noexcept { return groups.  end(); }
+  inline auto      size() noexcept { return groups. size(); }
 };
 
 #endif
