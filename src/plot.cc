@@ -17,14 +17,14 @@
 // #include <TStyle.h>
 // #include <TPaveStats.h>
 
-#define TEST(var) \
-  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
-
 #include "program_options.hh"
 #include "tkey.hh"
 #include "group_map.hh"
 #include "plot_regex.hh"
 #include "shared_str.hh"
+
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
 
 using std::cout;
 using std::endl;
@@ -33,6 +33,7 @@ using ivanp::cat;
 using ivanp::error;
 
 std::vector<plot_regex> exprs;
+bool verbose_regex = false;
 
 class hist {
   const char* get_file_str() {
@@ -82,19 +83,21 @@ public:
     if (exprs.empty()) { group = init(flags::n); return true; }
 
     // temporary strings
-    std::array<std::vector<shared_str>,flags::nfields> tmps;
-    for (auto& vec : tmps) { vec.emplace_back(); }
+    std::array<std::vector<shared_str>,flags::nfields> fields;
+    for (auto& field : fields) { field.emplace_back(); }
 
-#define FIELD(I) std::get<flags::I>(tmps).back()
+#define FIELD(I) std::get<flags::I>(fields).back()
+
+    if (verbose_regex && exprs.size()>1) cout << endl;
 
     for (const plot_regex& expr : exprs) {
-      auto& vec = tmps[expr.from];
+      auto& field = fields[expr.from];
       int index = expr.from_i;
-      if (index<0) index += vec.size(); // make index positive
-      if (index<0 || (unsigned(index))>vec.size()) // overflow check
+      if (index<0) index += field.size(); // make index positive
+      if (index<0 || (unsigned(index))>field.size()) // overflow check
         throw error("out of range field string version index");
 
-      auto& str = vec[index];
+      auto& str = field[index];
       if (!str) { // initialize string
         if (expr.from == flags::g) {
           auto& name = FIELD(n);
@@ -104,15 +107,28 @@ public:
       }
 
       auto result = expr(str);
+
+      if (verbose_regex) {
+        cout << expr.blocks[0];
+        if (expr.blocks.size()>1) cout << '/' << expr.blocks[1];
+        cout << " : " << *str;
+        if (result) {
+          if (!expr.m) cout << " => " << *result << '\n';
+          else cout << " \033[32m✓\033[0m\n";
+        } else cout << " \033[31m✗\033[0m\n";
+      }
+
       if (!result) return false;
-      vec.emplace_back(std::move(result));
+      field.emplace_back(std::move(result));
 
     } // end expressions loop
 
+    // assign group
     if (!(group = std::move(FIELD(g))))
       if (!(group = std::move(FIELD(n)))) // default g to n
         group = init(flags::n);
 
+    // assign field values to the histogram
     if (FIELD(t)) h->SetTitle (FIELD(t)->c_str());
     if (FIELD(x)) h->SetXTitle(FIELD(x)->c_str());
     if (FIELD(y)) h->SetYTitle(FIELD(y)->c_str());
@@ -120,6 +136,8 @@ public:
     if (FIELD(l)) legend = std::move(FIELD(z));
 
 #undef FIELD
+
+    // TODO: use trailing expression blocks
 
     return true;
   }
@@ -163,8 +181,10 @@ int main(int argc, char* argv[]) {
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)",req())
-      (expr_args,'r',"regular expressions")
+      (expr_args,'r',"regular expressions flags/regex/fmt/...")
+      (verbose_regex,"--verbose-regex")
       .help_suffix(
+        "Repo & manual: https://github.com/ivankp/root_tools2\n"
         "Regex expression syntax:\n"
         BOOST_REGEX_URL "syntax/perl_syntax.html\n"
         "Regex captures syntax:\n"
@@ -178,7 +198,7 @@ int main(int argc, char* argv[]) {
       "output file name must end in \".pdf\"");
 
     exprs.reserve(expr_args.size());
-    for (const auto& expr : expr_args) exprs.emplace_back(expr);
+    for (const char* str : expr_args) exprs.emplace_back(str);
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;
     return 1;
@@ -199,14 +219,5 @@ int main(int argc, char* argv[]) {
   for (const auto& g : hist_map) {
     cout << *g.first << '\n';
   }
-
-  // auto str = make_shared_str("jets_N_incl");
-  // auto out = exprs[0](str);
-  //
-  // if (!out) {
-  //   cout << "Didn't match" << endl;
-  // } else {
-  //   cout << ( out==str ? "Unchanged: " : "Result: " ) << *out << endl;
-  // }
 
 }

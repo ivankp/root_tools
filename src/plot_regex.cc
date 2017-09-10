@@ -8,9 +8,6 @@ using std::cout;
 using std::endl;
 using std::cerr;
 
-#define TEST(var) \
-  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
-
 using namespace ivanp;
 
 plot_regex::plot_regex(const char* str) {
@@ -120,11 +117,11 @@ plot_regex::plot_regex(const char* str) {
 
   if (m) {
     if (!same())
-      cerr << "\033[33mWarning\033[0m: in " << str
-           << " matching expression with distinct fields" << endl;
+      cerr << "\033[33mWarning\033[0m: in \"" << str
+           << "\": matching expression with distinct fields" << endl;
     if (blocks.size()>=2 && !blocks[1].empty())
-      cerr << "\033[33mWarning\033[0m: in " << str
-           << " matching expression with formatting pattern" << endl;
+      cerr << "\033[33mWarning\033[0m: in \"" << str
+           << "\": matching expression with formatting pattern" << endl;
   }
 
   /*
@@ -153,6 +150,9 @@ shared_str plot_regex::operator()(shared_str str) const {
   using str_t = typename shared_str::element_type;
   boost::regex_iterator<str_t::const_iterator,str_t::value_type>
     it(last, str->cend(), re), end;
+
+  // TODO: inverse
+  // TODO: signal match properly
 
   if (it==end) return s ? shared_str{} : str;
   if (m || blocks.size() < 2) return str;
