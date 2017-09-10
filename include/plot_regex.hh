@@ -1,11 +1,9 @@
 #ifndef IVANP_PLOT_REGEX_HH
 #define IVANP_PLOT_REGEX_HH
 
-#include <memory>
 #include <boost/regex.hpp>
+#include "shared_str.hh"
 #include "error.hh"
-
-using shared_str = std::shared_ptr<std::string>;
 
 struct flags {
   enum field { g, n, t, x, y, z, l, d, f, no_field };

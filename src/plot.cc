@@ -24,6 +24,7 @@
 #include "tkey.hh"
 #include "group_map.hh"
 #include "plot_regex.hh"
+#include "shared_str.hh"
 
 using std::cout;
 using std::endl;
@@ -153,12 +154,13 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto str = exprs[0](std::make_shared<std::string>("jets_N_incl"));
+  auto str = make_shared_str("jets_N_incl");
+  auto out = exprs[0](str);
 
-  if (!str) {
+  if (!out) {
     cout << "Didn't match" << endl;
   } else {
-    cout << "Result: " << *str << endl;
+    cout << ( out==str ? "Unchanged: " : "Result: " ) << *out << endl;
   }
 
 }
