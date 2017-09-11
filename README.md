@@ -1,4 +1,4 @@
-# plot
+# `plot`
 
 ## Regular expressions syntax
 
@@ -21,7 +21,7 @@ The delimiter is determined by the first character of `/|:` used after the
 flags block. The delimiter remains the same throughout the expression, but is
 determined anew for every expression.
 
-Delimiters need to be escaped with `\` to be inserted as literal characters.
+To be inserted as literal characters, delimiters need to be escaped with `\`.
 Only the delimiter in use needs to be escaped. The other characters from the
 set of possible delimiters are inserted literally.
 
