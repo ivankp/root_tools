@@ -108,27 +108,28 @@ public:
 
       const auto result = expr(str);
       const bool r = !!result;
-      bool discard = false, new_str = false;
-
-      if (r != expr.i) {
-        if (r) {
-          fields[expr.to].emplace_back(result);
-          new_str = true;
-        }
-        // TODO: run functions
-      } else if (expr.s) discard = true;
+      const bool new_str = (r && (result!=str || !expr.same()));
 
       if (verbose) {
-        cout << expr << " : " << *field[index];
+        cout << expr << " : " << *str;
         if (new_str) cout << " => " << *result;
         else {
-          cout << ( r == expr.i ? " \033[32m" : " \033[31m" );
-          cout << ( r ? "✓" : "✗" ) << "\033[0m";
+          if (r) cout << " \033[32m✓";
+          else { cout << " \033[31m✗";
+            if (expr.s) cout << " discarded";
+          }
+          cout << "\033[0m";
         }
         cout << endl;
       }
 
-      if (discard) return false;
+      if (expr.s && !r) return false;
+
+      if (new_str)
+        fields[expr.to].emplace_back(result);
+
+      // if (r) // TODO: run commands
+
     } // end expressions loop
 
     // assign group
@@ -183,14 +184,14 @@ int main(int argc, char* argv[]) {
     using namespace ivanp::po;
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
-      (ofname,'o',"output file (.pdf)",req())
+      (ofname,'o',"output file (.pdf)")
       (expr_args,'r',"regular expressions flags/regex/fmt/...")
       (verbose,{"-v","--verbose"},"print transformations")
       .help_suffix("https://github.com/ivankp/root_tools2")
       .parse(argc,argv,true)) return 0;
 
-    if (!ivanp::ends_with(ofname,".pdf")) throw ivanp::error(
-      "output file name must end in \".pdf\"");
+    // if (!ivanp::ends_with(ofname,".pdf")) throw ivanp::error(
+    //   "output file name must end in \".pdf\"");
 
     exprs.reserve(expr_args.size());
     for (const char* str : expr_args) exprs.emplace_back(str);

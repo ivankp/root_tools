@@ -28,9 +28,9 @@ std::ostream& operator<<(std::ostream& s, flags::field field) {
 #undef CASE
 }
 std::ostream& operator<<(std::ostream& s, const flags& f) {
-  if (f.i) s << 'i';
   if (f.s) s << 's';
-  if (f.m) s << 'm';
+  if (f.w) s << 'w';
+  if (f.i) s << 'i';
   s << f.from;
   if (f.from_i != -1) s << f.from_i;
   if (f.add==flags::prepend) s << '+';
@@ -57,18 +57,18 @@ plot_regex::plot_regex(const char* str) {
     if (!delim) {
       flags::field f = flags::no_field;
       switch (c) {
-        case 'i':
-          if (!no_from()) throw bad_expression(
-            str,"\'i\' must appear before field flags");
-          this->i = true; continue;
         case 's':
           if (!no_from()) throw bad_expression(
             str,"\'s\' must appear before field flags");
           this->s = true; continue;
-        case 'm':
+        case 'w':
           if (!no_from()) throw bad_expression(
-            str,"\'m\' must appear before field flags");
-          this->m = true; continue;
+            str,"\'w\' must appear before field flags");
+          this->w = true; continue;
+        case 'i':
+          if (!no_from()) throw bad_expression(
+            str,"\'i\' must appear before field flags");
+          this->i = true; continue;
         case 'g': f = flags::g; break;
         case 't': f = flags::t; break;
         case 'x': f = flags::x; break;
@@ -122,7 +122,7 @@ plot_regex::plot_regex(const char* str) {
       }
       auto& block = blocks.back();
       if (c=='\\') ++esc;
-      else if (esc) {
+      else if (esc) { // FIXME: '\' consumption
         if (esc>1) block.append(esc-1,'\\');
         if (c == delim) block += c;
         else switch(c) {
@@ -140,8 +140,6 @@ plot_regex::plot_regex(const char* str) {
   if (add && no_to()) throw bad_expression(
     str,"\'+\' requires both fields stated explicitly");
 
-  if (!m && blocks.size()<2) m = true;
-
   if (no_from()) from = flags::g; // default to group for 1st
   if (no_to()) to = from; // default to same for 2nd
 
@@ -149,13 +147,21 @@ plot_regex::plot_regex(const char* str) {
     if (blocks.empty()) throw bad_expression(
       str,"single field expression without matching pattern");
     else if (!this->s && blocks.size()<2) throw bad_expression(
-      str,"single field matching expression without \'s\' or argument");
+      str,"single field matching expression without \'s\' or command");
   }
 
+  if (i && blocks.size()<1) i = false; // 'i' has no effect
+  if (w && blocks.size()<2) w = false; // 'w' has no effect
+  // this is corrected so that --verbose doesn't print
+
+  // if (blocks.size()>=2
+  if (i && blocks.size()>1 && !w) w = true;
+
+  // create regex if specified and not empty
   if (!blocks.empty() && !blocks.front().empty()) {
     using namespace boost::regex_constants;
     syntax_option_type flags = optimize;
-    if (m) flags |= nosubs;
+    if (w || blocks.size()<2 || blocks[1].empty()) flags |= nosubs;
     try {
       re.assign( blocks.front(), flags );
     } catch (const std::exception& e) {
@@ -164,19 +170,21 @@ plot_regex::plot_regex(const char* str) {
   }
 }
 
+// TODO: better way to pass strings than shared_ptr
+
 shared_str plot_regex::operator()(shared_str str) const {
-  if (re.empty() && blocks.size()>1)
-    return make_shared_str(blocks[1]);
+  if (re.empty()) // no regex
+    return blocks.size()>1 ? make_shared_str(blocks[1]) : str;
 
   auto last = str->cbegin();
   using str_t = typename shared_str::element_type;
   boost::regex_iterator<str_t::const_iterator,str_t::value_type>
     it(last, str->cend(), re), end;
 
-  if (it==end) {
-    return !i || blocks.size()<2 ? shared_str{} : make_shared_str(blocks[1]);
-  } else if (m)
-    return !i && blocks.size()<2 ? str : make_shared_str(blocks[1]);
+  if ((it!=end)==i) return { };
+  else if (w) return make_shared_str(blocks[1]);
+  else if (i) return str;
+  else if (blocks.size()<2) return str;
 
   auto result = make_shared_str();
   auto out = std::back_inserter(*result);
