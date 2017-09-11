@@ -11,6 +11,10 @@ The blocks appear in the following order:
 3. Format string
 4. Commands
 
+*Example*: `snt/^jet_/Jet /norm` selects only histograms whose names start with `"jets_"`,
+replaces that with `"Jets "`, sets the histogram's title to the modified string,
+and normalizes the histogram.
+
 ### Delimiters
 
 The delimiter is determined by the first character of `/|:` used after the flags block.
@@ -26,7 +30,7 @@ If `\` precedes a character the cannot be escaped, i.e. is neither `n`, `t`, or 
 a literal `\` is inserted.
 To insert a literal `\` instead of escaping a character, `\\` must be used.
 
-Examples:
+*Examples*:
 * `\n` is a new line.
 * `\b` is a backslash followed by `b`.
 * `\\n` is a backslash followed by `n`.
