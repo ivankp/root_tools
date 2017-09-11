@@ -179,6 +179,7 @@ int main(int argc, char* argv[]) {
   const char* ofname;
   std::vector<const char*> ifnames;
   std::vector<const char*> expr_args;
+  bool sort_groups = false;
 
   try {
     using namespace ivanp::po;
@@ -186,6 +187,7 @@ int main(int argc, char* argv[]) {
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
       (expr_args,'r',"regular expressions flags/regex/fmt/...")
+      (sort_groups,"--sort","sort groups alphabetically")
       (verbose,{"-v","--verbose"},"print transformations")
       .help_suffix("https://github.com/ivankp/root_tools2")
       .parse(argc,argv,true)) return 0;
@@ -200,6 +202,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // Group histograms ***********************************************
   std::vector<std::unique_ptr<TFile>> ifiles;
   ifiles.reserve(ifnames.size());
   for (const char* name : ifnames) {
@@ -210,6 +213,8 @@ int main(int argc, char* argv[]) {
 
     loop(f);
   }
+
+  if (sort_groups) hist_map.sort();
 
   cout << "\nGroups:\n";
   for (const auto& g : hist_map) {

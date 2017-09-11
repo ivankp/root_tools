@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <algorithm>
 
 #include "error.hh"
 
@@ -62,6 +63,22 @@ public:
   inline iterator begin() noexcept { return groups.begin(); }
   inline iterator   end() noexcept { return groups.  end(); }
   inline auto      size() noexcept { return groups. size(); }
+
+  void sort() {
+    using it_t = typename decltype(groups)::value_type;
+    std::sort( groups.begin(), groups.end(),
+      [](const it_t& a, const it_t& b) { return a->first < b->first; }
+    );
+  }
+  template <typename Pred>
+  void sort(Pred&& pred) {
+    using it_t = typename decltype(groups)::value_type;
+    std::sort( groups.begin(), groups.end(),
+      [&pred](const it_t& a, const it_t& b) {
+        return pred(a->first, b->first);
+      }
+    );
+  }
 };
 
 #endif
