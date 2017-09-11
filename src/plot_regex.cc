@@ -1,18 +1,55 @@
 #include "plot_regex.hh"
 
-#include <iostream>
 #include <algorithm>
 #include <iterator>
 
-using std::cout;
-using std::endl;
-using std::cerr;
-
 using namespace ivanp;
+
+struct bad_expression : ::ivanp::error {
+  template <typename... Args>
+  bad_expression(const char* str, const Args&... args)
+  : ivanp::error("in \"",str,"\": ",args...) { }
+};
+
+std::ostream& operator<<(std::ostream& s, flags::field field) {
+#define CASE(C) case flags::C : return s << ((#C)[0]);
+  switch (field) {
+    CASE(g)
+    CASE(n)
+    CASE(t)
+    CASE(x)
+    CASE(y)
+    CASE(z)
+    CASE(l)
+    CASE(d)
+    CASE(f)
+    default: return s;
+  }
+#undef CASE
+}
+std::ostream& operator<<(std::ostream& s, const flags& f) {
+  if (f.i) s << 'i';
+  if (f.s) s << 's';
+  if (f.m) s << 'm';
+  s << f.from;
+  if (f.from_i != -1) s << f.from_i;
+  if (f.add==flags::prepend) s << '+';
+  s << f.to;
+  if (f.add==flags::append) s << '+';
+  return s;
+}
+std::ostream& operator<<(std::ostream& s, const plot_regex& ex) {
+  s << static_cast<const flags&>(ex);
+  const unsigned nblocks = ex.blocks.size();
+  if (nblocks>0) {
+    s << ex.delim << ex.blocks[0] << ex.delim;
+    if (nblocks>1) s << ex.blocks[1] << ex.delim;
+  }
+  return s;
+}
 
 plot_regex::plot_regex(const char* str) {
   if (!str || *str=='\0') throw error("blank expression");
-  char delim = 0;
   bool last_was_field = false, last_was_delim = false;
   unsigned esc = 0;
   const char *s = str;
@@ -20,14 +57,14 @@ plot_regex::plot_regex(const char* str) {
     if (!delim) {
       flags::field f = flags::no_field;
       switch (c) {
-        case 's':
-          if (!no_from()) throw bad_expression(
-            str,"\'s\' must appear before field flags");
-          this->s = true; continue;
         case 'i':
           if (!no_from()) throw bad_expression(
             str,"\'i\' must appear before field flags");
           this->i = true; continue;
+        case 's':
+          if (!no_from()) throw bad_expression(
+            str,"\'s\' must appear before field flags");
+          this->s = true; continue;
         case 'm':
           if (!no_from()) throw bad_expression(
             str,"\'m\' must appear before field flags");
@@ -115,25 +152,7 @@ plot_regex::plot_regex(const char* str) {
       str,"single field matching expression without \'s\' or argument");
   }
 
-  if (m) {
-    if (!same())
-      cerr << "\033[33mWarning\033[0m: in \"" << str
-           << "\": matching expression with distinct fields" << endl;
-    if (blocks.size()>=2 && !blocks[1].empty())
-      cerr << "\033[33mWarning\033[0m: in \"" << str
-           << "\": matching expression with formatting pattern" << endl;
-  }
-
-  /*
-  std::cout <<'\"'<< str << "\" split into:\n";
-  for (const auto& b : blocks) std::cout << "  " << b << std::endl;
-  TEST( add )
-  TEST( m )
-  TEST( from )
-  TEST( to )
-  */
-
-  if (!blocks.empty()) {
+  if (!blocks.empty() && !blocks.front().empty()) {
     using namespace boost::regex_constants;
     syntax_option_type flags = optimize;
     if (m) flags |= nosubs;
@@ -146,16 +165,18 @@ plot_regex::plot_regex(const char* str) {
 }
 
 shared_str plot_regex::operator()(shared_str str) const {
+  if (re.empty() && blocks.size()>1)
+    return make_shared_str(blocks[1]);
+
   auto last = str->cbegin();
   using str_t = typename shared_str::element_type;
   boost::regex_iterator<str_t::const_iterator,str_t::value_type>
     it(last, str->cend(), re), end;
 
-  // TODO: inverse
-  // TODO: signal match properly
-
-  if (it==end) return s ? shared_str{} : str;
-  if (m || blocks.size() < 2) return str;
+  if (it==end) {
+    return !i || blocks.size()<2 ? shared_str{} : make_shared_str(blocks[1]);
+  } else if (m)
+    return !i && blocks.size()<2 ? str : make_shared_str(blocks[1]);
 
   auto result = make_shared_str();
   auto out = std::back_inserter(*result);

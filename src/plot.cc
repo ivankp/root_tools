@@ -33,7 +33,7 @@ using ivanp::cat;
 using ivanp::error;
 
 std::vector<plot_regex> exprs;
-bool verbose_regex = false;
+bool verbose = false;
 
 class hist {
   const char* get_file_str() {
@@ -88,7 +88,7 @@ public:
 
 #define FIELD(I) std::get<flags::I>(fields).back()
 
-    if (verbose_regex && exprs.size()>1) cout << endl;
+    if (verbose && exprs.size()>1) cout << '\n';
 
     for (const plot_regex& expr : exprs) {
       auto& field = fields[expr.from];
@@ -106,21 +106,29 @@ public:
         } else str = init(expr.from);
       }
 
-      auto result = expr(str);
+      const auto result = expr(str);
+      const bool r = !!result;
+      bool discard = false, new_str = false;
 
-      if (verbose_regex) {
-        cout << expr.blocks[0];
-        if (expr.blocks.size()>1) cout << '/' << expr.blocks[1];
-        cout << " : " << *str;
-        if (result) {
-          if (!expr.m) cout << " => " << *result << '\n';
-          else cout << " \033[32m✓\033[0m\n";
-        } else cout << " \033[31m✗\033[0m\n";
+      if (r != expr.i) {
+        if (r) {
+          fields[expr.to].emplace_back(result);
+          new_str = true;
+        }
+        // TODO: run functions
+      } else if (expr.s) discard = true;
+
+      if (verbose) {
+        cout << expr << " : " << *field[index];
+        if (new_str) cout << " => " << *result;
+        else {
+          cout << ( r == expr.i ? " \033[32m" : " \033[31m" );
+          cout << ( r ? "✓" : "✗" ) << "\033[0m";
+        }
+        cout << endl;
       }
 
-      if (!result) return false;
-      field.emplace_back(std::move(result));
-
+      if (discard) return false;
     } // end expressions loop
 
     // assign group
@@ -136,8 +144,6 @@ public:
     if (FIELD(l)) legend = std::move(FIELD(z));
 
 #undef FIELD
-
-    // TODO: use trailing expression blocks
 
     return true;
   }
@@ -168,9 +174,6 @@ void loop(TDirectory* dir) { // LOOP
   }
 }
 
-#define BOOST_REGEX_URL \
-  "http://www.boost.org/libs/regex/doc/html/boost_regex/"
-
 int main(int argc, char* argv[]) {
   const char* ofname;
   std::vector<const char*> ifnames;
@@ -182,16 +185,8 @@ int main(int argc, char* argv[]) {
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)",req())
       (expr_args,'r',"regular expressions flags/regex/fmt/...")
-      (verbose_regex,"--verbose-regex")
-      .help_suffix(
-        "Repo & manual: https://github.com/ivankp/root_tools2\n"
-        "Regex expression syntax:\n"
-        BOOST_REGEX_URL "syntax/perl_syntax.html\n"
-        "Regex captures syntax:\n"
-        BOOST_REGEX_URL "captures.html\n"
-        "Regex format string syntax:\n"
-        BOOST_REGEX_URL "format/boost_format_syntax.html\n"
-      )
+      (verbose,{"-v","--verbose"},"print transformations")
+      .help_suffix("https://github.com/ivankp/root_tools2")
       .parse(argc,argv,true)) return 0;
 
     if (!ivanp::ends_with(ofname,".pdf")) throw ivanp::error(
