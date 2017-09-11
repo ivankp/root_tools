@@ -111,7 +111,7 @@ public:
       const bool new_str = (r && (result!=str || !expr.same()));
 
       if (verbose) {
-        cout << expr << " : " << *str;
+        cout << expr << ' ' << *str;
         if (new_str) cout << " => " << *result;
         else {
           if (r) cout << " \033[32m✓";

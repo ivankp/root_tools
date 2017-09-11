@@ -18,9 +18,8 @@ struct flags {
   field from : 4; // field being read
   field to   : 4; // field being set
   int from_i : 8; // field variant, python index sign convention
-  char delim;
   flags(): s(0), w(0), i(0), add(no_add),
-           from(no_field), to(no_field), from_i(-1), delim('\0') { }
+           from(no_field), to(no_field), from_i(-1) { }
   inline bool no_from() const noexcept { return from == no_field; }
   inline bool no_to  () const noexcept { return to   == no_field; }
   inline bool same   () const noexcept { return from == to; }

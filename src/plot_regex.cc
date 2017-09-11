@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <iterator>
 
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+
 using namespace ivanp;
 
 struct bad_expression : ::ivanp::error {
@@ -42,8 +45,8 @@ std::ostream& operator<<(std::ostream& s, const plot_regex& ex) {
   s << static_cast<const flags&>(ex);
   const unsigned nblocks = ex.blocks.size();
   if (nblocks>0) {
-    s << ex.delim << ex.blocks[0] << ex.delim;
-    if (nblocks>1) s << ex.blocks[1] << ex.delim;
+    s << "›" << ex.blocks[0] << "›";
+    if (nblocks>1) s << ex.blocks[1] << "›";
   }
   return s;
 }
@@ -52,6 +55,7 @@ plot_regex::plot_regex(const char* str) {
   if (!str || *str=='\0') throw error("blank expression");
   bool last_was_field = false, last_was_delim = false;
   unsigned esc = 0;
+  char delim = 0;
   const char *s = str;
   for (char c; (c=*s); ++s) {
     if (!delim) {
@@ -122,20 +126,19 @@ plot_regex::plot_regex(const char* str) {
       }
       auto& block = blocks.back();
       if (c=='\\') ++esc;
-      else if (esc) { // FIXME: '\' consumption
-        if (esc>1) block.append(esc-1,'\\');
-        if (c == delim) block += c;
-        else switch(c) {
-          case 'n': block += '\n'; break;
-          case 't': block += '\t'; break;
-          default : block += {'\\',c};
-        }
+      else if (esc) {
+        if (c == delim) {
+          block.append(esc-1,'\\');
+          if (esc%2) block += delim;
+          else block += '\\', last_was_delim = true;
+        } else block.append(esc,'\\'), block += c;
         esc = 0;
       }
       else if (c == delim) last_was_delim = true;
       else block += c;
     }
   } // end for
+  if (esc) blocks.back().append(esc,'\\');
 
   if (add && no_to()) throw bad_expression(
     str,"\'+\' requires both fields stated explicitly");
@@ -154,7 +157,6 @@ plot_regex::plot_regex(const char* str) {
   if (w && blocks.size()<2) w = false; // 'w' has no effect
   // this is corrected so that --verbose doesn't print
 
-  // if (blocks.size()>=2
   if (i && blocks.size()>1 && !w) w = true;
 
   // create regex if specified and not empty
