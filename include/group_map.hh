@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <algorithm>
 
 #include "error.hh"
@@ -32,10 +32,9 @@ public:
 };
 
 template <typename T, typename Key = std::string,
-          typename Hash = std::hash<Key>,
-          typename KeyEqual = std::equal_to<Key> >
+          typename Compare = std::less<Key> >
 class group_map {
-  std::unordered_map<Key,std::vector<T>,Hash,KeyEqual> map;
+  std::map<Key,std::vector<T>,Compare> map;
   std::vector<typename decltype(map)::iterator> groups;
 
   class error : ivanp::error { using ivanp::error::error; };

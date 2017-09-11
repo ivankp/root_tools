@@ -40,6 +40,16 @@ inline bool ends_with(const char* str, const char(&suffix)[N]) {
   if (len<N-1) return false;
   return starts_with(str+(len-N+1),suffix);
 }
+template <unsigned N>
+inline bool ends_with(const std::string& str, const char(&suffix)[N]) {
+  return ends_with<N>(str.c_str(),suffix);
+}
+
+struct less_sz {
+  bool operator()(const char* a, const char* b) const noexcept {
+    return strcmp(a,b) < 0;
+  }
+};
 
 }
 
