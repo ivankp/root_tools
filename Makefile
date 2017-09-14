@@ -16,11 +16,14 @@ rpath_script := ldd `root-config --libdir`/libTreePlayer.so \
   | sed 's/^/-Wl,-rpath=/'
 ROOT_LIBS += $(shell $(rpath_script))
 
-C_plot := $(ROOT_CFLAGS)
-L_plot := $(ROOT_LIBS) -lboost_regex
+C_rxplot := $(ROOT_CFLAGS)
+L_rxplot := $(ROOT_LIBS) -lboost_regex
 
 C_envelopes := $(ROOT_CFLAGS)
 L_envelopes := $(ROOT_LIBS)
+
+C_rxplot/hist := $(ROOT_CFLAGS)
+C_rxplot/hist_functions := $(ROOT_CFLAGS)
 
 SRC := src
 BIN := bin
@@ -37,7 +40,9 @@ NODEPS := clean
 
 all: $(EXES)
 
-bin/plot: $(BLD)/program_options.o $(BLD)/plot_regex.o
+bin/rxplot: \
+  $(BLD)/program_options.o $(BLD)/rxplot/regex.o $(BLD)/rxplot/hist.o \
+  $(BLD)/rxplot/hist_functions.o
 bin/envelopes: $(BLD)/program_options.o
 
 #Don't create dependencies when we're cleaning, for instance
@@ -45,7 +50,9 @@ ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
 -include $(DEPS)
 endif
 
-$(DEPS): $(BLD)/%.d: $(SRC)/%.cc | $(BLD)
+.SECONDEXPANSION:
+
+$(DEPS): $(BLD)/%.d: $(SRC)/%.cc | $(BLD)/$$(dir %)
 	$(CXX) $(DF) -MM -MT '$(@:.d=.o)' $< -MF $@
 
 $(BLD)/%.o: | $(BLD)
@@ -54,8 +61,8 @@ $(BLD)/%.o: | $(BLD)
 $(BIN)/%: $(BLD)/%.o | $(BIN)
 	$(CXX) $(LF) $(filter %.o,$^) -o $@ $(L_$*)
 
-$(BLD) $(BIN):
-	mkdir $@
+$(BIN) $(BLD)/%/:
+	mkdir -p $@
 
 clean:
 	@rm -rfv $(BLD) $(BIN)

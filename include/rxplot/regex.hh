@@ -1,10 +1,16 @@
-#ifndef IVANP_PLOT_REGEX_HH
-#define IVANP_PLOT_REGEX_HH
+#ifndef IVANP_RXPLOT_REGEX_HH
+#define IVANP_RXPLOT_REGEX_HH
 
 #include <iostream>
+#include <vector>
+#include <functional>
+
 #include <boost/regex.hpp>
+
 #include "shared_str.hh"
 #include "error.hh"
+
+class TH1;
 
 struct flags {
   enum field { g, n, t, x, y, z, l, d, f, no_field };
@@ -32,6 +38,7 @@ std::ostream& operator<<(std::ostream&, const flags&);
 struct plot_regex: public flags {
   boost::regex re;
   std::vector<std::string> blocks;
+  std::vector<std::function<void(TH1*)>> fcns;
 
   plot_regex(const char* str); // parsing constructor
   shared_str operator()(shared_str) const; // apply regex

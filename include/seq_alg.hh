@@ -31,6 +31,14 @@ struct head<std::integer_sequence<T,Head,I...>>
 : maybe<just<std::integral_constant<T,Head>>> { };
 template <typename Seq> using head_t = typename head<Seq>::type;
 
+template <typename Seq, typename Seq::value_type Inc> struct increment;
+template <typename T, T... I, T Inc>
+struct increment<std::integer_sequence<T,I...>, Inc> {
+  using type = std::integer_sequence<T,(I+Inc)...>;
+};
+template <typename Seq, typename Seq::value_type Inc>
+using increment_t = typename increment<Seq,Inc>::type;
+
 }}
 
 #endif

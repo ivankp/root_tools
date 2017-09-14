@@ -1,7 +1,9 @@
-#include "plot_regex.hh"
+#include "rxplot/regex.hh"
 
 #include <algorithm>
 #include <iterator>
+
+#include "runtime_curried.hh"
 
 using namespace ivanp;
 
@@ -137,6 +139,8 @@ plot_regex::plot_regex(const char* str) {
   } // end for
   if (esc) blocks.back().append(esc,'\\');
 
+  const unsigned nblocks = blocks.size();
+
   if (add && no_to()) throw bad_expression(
     str,"\'+\' requires both fields stated explicitly");
 
@@ -144,32 +148,48 @@ plot_regex::plot_regex(const char* str) {
   if (no_to()) to = from; // default to same for 2nd
 
   if (same()) {
-    if (blocks.empty()) throw bad_expression(
+    if (nblocks==0) throw bad_expression(
       str,"single field expression without matching pattern");
-    else if (!this->s && blocks.size()<2) throw bad_expression(
+    else if (!this->s && nblocks<2) throw bad_expression(
       str,"single field matching expression without \'s\' or command");
   }
 
-  if (i && blocks.size()<1) i = false; // 'i' has no effect
-  if (w && blocks.size()<2) w = false; // 'w' has no effect
+  if (i && nblocks<1) i = false; // 'i' has no effect
+  if (w && nblocks<2) w = false; // 'w' has no effect
   // this is corrected so that --verbose doesn't print
 
-  if (i && blocks.size()>1 && !w) w = true;
+  if (i && nblocks>1 && !w) w = true;
 
   // create regex if specified and not empty
-  if (!blocks.empty() && !blocks.front().empty()) {
+  if (nblocks && !blocks.front().empty()) {
     using namespace boost::regex_constants;
     syntax_option_type flags = optimize;
-    if (w || blocks.size()<2 || blocks[1].empty()) flags |= nosubs;
+    if (w || nblocks<2 || blocks[1].empty()) flags |= nosubs;
     try {
       re.assign( blocks.front(), flags );
     } catch (const std::exception& e) {
       throw bad_expression(str,e.what());
     }
   }
-}
 
-// TODO: better way to pass strings than shared_ptr
+  // parse functions
+  if (nblocks>2) {
+    fcns.reserve(nblocks-2);
+    for (auto it=blocks.begin()+2, end=blocks.end(); it!=end; ++it) {
+      auto sep = it->find('=');
+      bool no_eq = false;
+      if (sep==std::string::npos) sep = it->size(), no_eq = true;
+      boost::string_view name(it->data(), sep);
+      if (no_eq) --sep;
+      const boost::string_view args(it->data()+sep+1, it->size()-sep-1);
+      name.remove_prefix(std::min(name.find_first_not_of(" \t\n"),name.size()));
+      const auto last = name.find_last_of(" \t\n");
+      if (last!=boost::string_view::npos)
+        name.remove_suffix(name.size()-last);
+      fcns.emplace_back(runtime_curried<TH1*>::make(name,args));
+    }
+  }
+}
 
 shared_str plot_regex::operator()(shared_str str) const {
   if (re.empty()) // no regex

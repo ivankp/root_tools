@@ -22,9 +22,11 @@ constexpr literal type_str() {
 #endif
 }
 
+#ifdef _GLIBCXX_IOSTREAM
 template <typename T> void prt_type() {
   std::cout << "\033[34;1m" << type_str<T>() << "\033[0m ("
             << sizeof(T) << ')' << std::endl;
 }
+#endif
 
 #endif

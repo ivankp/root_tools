@@ -1,8 +1,16 @@
 #ifndef IVANP_OPT_PARSER_HH
 #define IVANP_OPT_PARSER_HH
 
+#if __has_include(<boost/lexical_cast/try_lexical_convert.hpp>)
+#define PROGRAM_OPTIONS_BOOST_LEXICAL_CAST
+#include <boost/lexical_cast/try_lexical_convert.hpp>
+#else
+#include <sstream>
+#endif
+
 #include "program_options/fwd/opt_parser.hh"
 #include "maybe_valid.hh"
+#include "type_traits.hh"
 
 namespace ivanp { namespace po {
 
@@ -45,9 +53,9 @@ auto maybe_emplace = first_valid(
 
 #undef EMPLACE_EXPR
 
-template <typename Var, typename X>
+template <typename Cont, typename T>
 using can_emplace = is_just_value<decltype(maybe_emplace(
-  std::declval<Var&>(), std::declval<X&&>() ))>;
+  std::declval<Cont&>(), std::declval<T&&>() ))>;
 
 // 1. Emplace const char* ===========================================
 template <typename T>
@@ -62,27 +70,37 @@ template <typename T>
 inline enable_case<arg_parser_switch,1,T>
 arg_parser_impl(const char* arg, T& var) { maybe_emplace(var,arg); }
 
-// 2. Emplace value_type ============================================
+// 2. std:vector ====================================================
 template <typename T>
-struct arg_parser_switch<2,T>: maybe_is<
-  bind_first<can_emplace,T>::template type,
-  m_value_type<T> > { };
+struct arg_parser_switch<2,T>: is_std_vector<T> { };
 
 template <typename T>
 inline enable_case<arg_parser_switch,2,T>
 arg_parser_impl(const char* arg, T& var) {
-  // TODO: emplace { } and then modify if possible
+  var.emplace_back();
+  arg_parser(arg,var.back());
+}
+
+// 3. Emplace value_type ============================================
+template <typename T>
+struct arg_parser_switch<3,T>: maybe_is<
+  bind_first<can_emplace,T>::template type,
+  m_value_type<T> > { };
+
+template <typename T>
+inline enable_case<arg_parser_switch,3,T>
+arg_parser_impl(const char* arg, T& var) {
   rm_const_elements_t<typename T::value_type> x;
   arg_parser(arg,x);
   maybe_emplace(var,std::move(x));
 }
 
-// 3. pair, array, tuple ============================================
+// 4. pair, array, tuple ============================================
 template <typename T>
 using tuple_size_t = decltype(std::tuple_size<std::decay_t<T>>::value);
 
 template <typename T>
-struct arg_parser_switch<3,T>: is_detected<tuple_size_t,T> { };
+struct arg_parser_switch<4,T>: is_detected<tuple_size_t,T> { };
 
 template <size_t I, typename T>
 inline std::enable_if_t<(I==std::tuple_size<T>::value)>
@@ -113,12 +131,12 @@ parse_elem(const char* arg, T& tup) {
 }
 
 template <typename T>
-inline enable_case<arg_parser_switch,3,T>
+inline enable_case<arg_parser_switch,4,T>
 arg_parser_impl(const char* arg, T& var) { parse_elem<0>(arg,var); }
 
-// 4. lexical_cast or stream ========================================
+// 5. lexical_cast or stream ========================================
 template <typename T>
-inline enable_case<arg_parser_switch,4,T>
+inline enable_case<arg_parser_switch,5,T>
 arg_parser_impl(const char* arg, T& var) {
 #ifdef PROGRAM_OPTIONS_BOOST_LEXICAL_CAST
   if (boost::conversion::try_lexical_convert(arg,var)) return;
