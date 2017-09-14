@@ -1,4 +1,4 @@
-# `plot`
+# `rxplot`
 
 ## Regular expressions syntax
 
@@ -75,3 +75,10 @@ field.
 
 Commands modify matched histograms in different ways, e.g. set line colors,
 rebin, normalize, etc.
+
+*Example*: `d/central/$&/line_color=2` makes lines of histograms in the directory called "central" red.
+
+List of commands with arguments ([] signify optional arguments):
+* `norm=[1]` normalize histogram
+* `scale=double,[string]` scale histogram. Second argument can be `width` to divide by bin width
+* `line_color=int` set line color
