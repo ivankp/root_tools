@@ -32,7 +32,7 @@ struct head<std::integer_sequence<T,Head,I...>>
 template <typename Seq> using head_t = typename head<Seq>::type;
 
 template <typename Seq, typename Seq::value_type Inc> struct increment;
-template <typename T, T... I, T Inc>
+template <typename T, T... I, typename std::integer_sequence<T,I...>::value_type Inc>
 struct increment<std::integer_sequence<T,I...>, Inc> {
   using type = std::integer_sequence<T,(I+Inc)...>;
 };
