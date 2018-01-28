@@ -19,10 +19,10 @@
 
 #include "program_options.hh"
 #include "tkey.hh"
-#include "group_map.hh"
+#include "ordered_map.hh"
 #include "shared_str.hh"
-#include "rxplot/regex.hh"
-#include "rxplot/hist.hh"
+#include "hed/regex.hh"
+#include "hed/hist.hh"
 #include "runtime_curried.hh"
 
 #define TEST(var) \
@@ -37,15 +37,16 @@ InputIt rfind(InputIt first, InputIt last, Pred&& pred) {
   return std::find(
     std::reverse_iterator<InputIt>(last),
     std::reverse_iterator<InputIt>(first),
-    pred).base();
+    std::forward<Pred>(pred)
+  ).base();
 }
 
 std::vector<plot_regex> exprs;
-group_map<
-  hist, shared_str,
+ordered_map<
+  std::vector<hist>, shared_str,
   deref_pred<std::hash<std::string>>,
   deref_pred<std::equal_to<std::string>>
-> hist_map;
+> group_map;
 
 void loop(TDirectory* dir) { // LOOP
   for (TKey& key : get_keys(dir)) {
@@ -57,7 +58,7 @@ void loop(TDirectory* dir) { // LOOP
       shared_str group;
 
       if ( _h(exprs,group) ) { // add hist if it passes selection
-        hist_map[std::move(group)].emplace_back(std::move(_h));
+        group_map[std::move(group)].emplace_back(std::move(_h));
       } else continue;
 
     } else if (key_class->InheritsFrom(TDirectory::Class())) { // DIR
@@ -92,7 +93,7 @@ int main(int argc, char* argv[]) {
       .help_suffix("https://github.com/ivankp/root_tools2")
       .parse(argc,argv,true)) return 0;
 
-    // default ofname to derived from ifname
+    // default ofname derived from ifname
     if (ofname.empty() && ifnames.size()==1) {
       const char* name = ifnames.front();
       unsigned len = strlen(name);
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]) {
 
     loop(f);
   }
-  if (sort_groups) hist_map.sort();
+  if (sort_groups) group_map.sort();
 
   // Draw histograms ************************************************
   TCanvas canv;
@@ -139,8 +140,8 @@ int main(int argc, char* argv[]) {
   cout << "\033[34mOutput file:\033[0m " << ofname <<'\n'<< endl;
   ofname += '(';
   bool first_group = true;
-  unsigned group_back_cnt = hist_map.size();
-  for (const auto& g : hist_map) {
+  unsigned group_back_cnt = group_map.size();
+  for (const auto& g : group_map) {
     --group_back_cnt;
     cout << *g.first << '\n';
 

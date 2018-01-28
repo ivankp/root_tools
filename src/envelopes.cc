@@ -21,7 +21,7 @@
 
 #include "program_options.hh"
 #include "tkey.hh"
-#include "group_map.hh"
+#include "ordered_map.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
@@ -63,7 +63,7 @@ struct graph {
     // }
   }
 };
-group_map<graph> graphs;
+ordered_map<std::vector<graph>> graphs;
 
 std::vector<const char*> ifnames;
 std::unordered_map<std::string,unsigned> rebin;

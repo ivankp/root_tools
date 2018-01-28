@@ -1,4 +1,4 @@
-#include "rxplot/regex.hh"
+#include "hed/regex.hh"
 
 #include <algorithm>
 #include <iterator>

@@ -9,12 +9,15 @@ namespace ivanp {
 
 namespace detail {
 
+template <typename S>
+inline void cat_impl(S&) { }
+
 template <typename S, typename T>
 inline void cat_impl(S& s, const T& t) { s << t; }
 
 template <typename S, typename T, typename... TT>
 inline void cat_impl(S& s, const T& t, const TT&... tt) {
-  s << t;
+  cat_impl(s,t);
   cat_impl(s,tt...);
 }
 
@@ -26,6 +29,7 @@ inline std::string cat(const TT&... tt) {
   detail::cat_impl(ss,tt...);
   return ss.str();
 }
+inline std::string cat() { return { }; }
 
 template <typename Str, unsigned N>
 inline bool starts_with(const Str& str, const char(&prefix)[N]) {

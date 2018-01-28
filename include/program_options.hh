@@ -198,7 +198,7 @@ public:
     return *this;
   }
 
-  bool parse(int argc, char const * const * argv, bool help_if_no_args=false);
+  bool parse(int argc, char** argv, bool help_if_no_args=false);
 
   void help();
 };

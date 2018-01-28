@@ -5,7 +5,7 @@
 #include <TAxis.h>
 
 #include "shared_str.hh"
-#include "rxplot/regex.hh"
+#include "hed/regex.hh"
 
 class hist {
   const char* get_file_str();

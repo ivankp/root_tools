@@ -56,7 +56,7 @@ void check_count(detail::opt_def* opt) {
     throw error("too many options " + opt->name);
 }
 
-bool program_options::parse(int argc, char const * const * argv,
+bool program_options::parse(int argc, char ** argv,
                             bool help_if_no_args) {
   using namespace ::ivanp::po::detail;
   // --help takes precedence over everything else
@@ -74,12 +74,12 @@ bool program_options::parse(int argc, char const * const * argv,
   }
 
   opt_def *opt = nullptr;
-  const char* val = nullptr;
+  char* val = nullptr;
   std::string tmp; // use view here
   bool last_was_val = false;
 
   for (int i=1; i<argc; ++i) {
-    const char* arg = argv[i];
+    char* arg = argv[i];
     last_was_val = false;
 
     const auto opt_type = get_opt_type(arg);
@@ -95,7 +95,7 @@ bool program_options::parse(int argc, char const * const * argv,
         opt = nullptr;
       }
       if (opt_type==long_opt) { // long: split by '='
-        if ((val = strchr(arg,'='))) arg = tmp.assign(arg,val).c_str(), ++val;
+        if ((val = strchr(arg,'='))) arg = &tmp.assign(arg,val)[0], ++val;
       } else { // short: allow spaceless
         if (arg[2]!='\0') val = arg+2;
       }

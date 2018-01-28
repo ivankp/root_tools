@@ -3,7 +3,7 @@ STD := -std=c++14
 DF := $(STD) -Iinclude
 CF := $(STD) -Wall -O3 -flto -Iinclude -fmax-errors=3
 # CF := $(STD) -Wall -g -Iinclude -fmax-errors=3
-LF := $(STD) -flto
+LF := $(STD) -O3 -flto
 
 ifneq (0, $(words $(LIBRARY_PATH)))
 LF += $(shell sed 's/^/-L/;s/:/ -L/g' <<< "$$LIBRARY_PATH")
@@ -19,14 +19,14 @@ rpath_script := ldd `root-config --libdir`/libTreePlayer.so \
   | sed -nr '/^(\/usr)?\/lib/!s/^/-Wl,-rpath=/p'
 ROOT_LIBS += $(shell $(rpath_script))
 
-C_rxplot := $(ROOT_CFLAGS)
-L_rxplot := $(ROOT_LIBS) -lboost_regex
+C_hed := $(ROOT_CFLAGS)
+L_hed := $(ROOT_LIBS) -lboost_regex
 
 C_envelopes := $(ROOT_CFLAGS)
 L_envelopes := $(ROOT_LIBS)
 
-C_rxplot/hist := $(ROOT_CFLAGS)
-C_rxplot/hist_functions := $(ROOT_CFLAGS)
+C_hed/hist := $(ROOT_CFLAGS)
+C_hed/hist_functions := $(ROOT_CFLAGS)
 
 SRC := src
 BIN := bin
@@ -44,9 +44,9 @@ NODEPS := clean
 
 all: $(EXES)
 
-bin/rxplot: \
-  $(BLD)/program_options.o $(BLD)/rxplot/regex.o $(BLD)/rxplot/hist.o \
-  $(BLD)/rxplot/hist_functions.o
+bin/hed: \
+  $(BLD)/program_options.o $(BLD)/hed/regex.o $(BLD)/hed/hist.o \
+  $(BLD)/hed/hist_functions.o
 bin/envelopes: $(BLD)/program_options.o
 
 #Don't create dependencies when we're cleaning, for instance

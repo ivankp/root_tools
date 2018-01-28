@@ -39,20 +39,20 @@ template <typename T, typename F>
 struct parser {
   F f;
   template <typename G> constexpr parser(G&& g): f(std::forward<G>(g)) { }
-  inline auto operator()(const char* str, T& x)
+  inline auto operator()(char* str, T& x)
   noexcept(noexcept(f(str,x))) { return f(str,x); }
 };
 template <typename T, typename F>
 struct parser<T,F&> {
   F& f;
   constexpr parser(F& g): f(g) { }
-  inline auto operator()(const char* str, T& x)
+  inline auto operator()(char* str, T& x)
   noexcept(noexcept(f(str,x))) { return f(str,x); }
 };
 
 template <typename T> struct is_parser {
   template <typename F>
-  using type = bool_constant<is_callable<F,const char*,T&>::value>;
+  using type = bool_constant<is_callable<F,char*,T&>::value>;
 };
 template <typename T> struct is_parser<const T> {
   template <typename F>
@@ -108,7 +108,7 @@ private:
   // parse ----------------------------------------------------------
   template <typename P = parser_t> inline std::enable_if_t<
     is_just<P>::value && !_is_switch>
-  parse_impl(const char* arg) { parser_t::type::operator()(arg,*x); }
+  parse_impl(char* arg) { parser_t::type::operator()(arg,*x); }
   template <typename P = parser_t> inline std::enable_if_t<
     is_nothing<P>::value && !_is_switch>
   parse_impl(const char* arg) {
@@ -142,7 +142,7 @@ public:
   opt_def_impl(T* x, std::string&& descr, M&&... m)
   : opt_def(std::move(descr)), Props(std::forward<M>(m))..., x(x) { };
 
-  inline void parse(const char* arg) { parse_impl(arg); ++count; }
+  inline void parse(char* arg) { parse_impl(arg); ++count; }
   inline void as_switch() { as_switch_impl(); ++count; }
   inline void default_init() { default_init_impl(); }
 

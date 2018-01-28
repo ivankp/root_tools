@@ -10,7 +10,7 @@ struct opt_def {
 
   opt_def(std::string&& descr): descr(std::move(descr)) { }
   virtual ~opt_def() { }
-  virtual void parse(const char* arg) = 0;
+  virtual void parse(char* arg) = 0;
   virtual void as_switch() = 0;
   virtual void default_init() = 0;
 

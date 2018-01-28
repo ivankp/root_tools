@@ -7,7 +7,7 @@
 #include <TFile.h>
 #include <TDirectory.h>
 
-#include "rxplot/hist.hh"
+#include "hed/hist.hh"
 
 bool hist::verbose = false;
 
