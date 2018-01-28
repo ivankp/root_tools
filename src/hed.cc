@@ -41,7 +41,7 @@ InputIt rfind(InputIt first, InputIt last, Pred&& pred) {
   ).base();
 }
 
-std::vector<plot_regex> exprs;
+std::vector<hist_regex> exprs;
 ordered_map<
   std::vector<hist>, shared_str,
   deref_pred<std::hash<std::string>>,
@@ -54,12 +54,12 @@ void loop(TDirectory* dir) { // LOOP
 
     if (key_class->InheritsFrom(TH1::Class())) { // HIST
 
-      hist _h(read_key<TH1>(key));
+      hist h(read_key<TH1>(key));
       shared_str group;
 
-      if ( _h(exprs,group) ) { // add hist if it passes selection
-        group_map[std::move(group)].emplace_back(std::move(_h));
-      } else continue;
+      if ( !h(exprs,group) ) continue;
+      // add hist if it passes selection
+      group_map[std::move(group)].emplace_back(std::move(h));
 
     } else if (key_class->InheritsFrom(TDirectory::Class())) { // DIR
       loop(read_key<TDirectory>(key));

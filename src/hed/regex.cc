@@ -3,7 +3,10 @@
 #include <algorithm>
 #include <iterator>
 
+#include <boost/lexical_cast/try_lexical_convert.hpp>
+
 #include "runtime_curried.hh"
+#include "error.hh"
 
 using namespace ivanp;
 
@@ -31,8 +34,8 @@ std::ostream& operator<<(std::ostream& s, flags::field field) {
 }
 std::ostream& operator<<(std::ostream& s, const flags& f) {
   if (f.s) s << 's';
-  if (f.w) s << 'w';
   if (f.i) s << 'i';
+  if (f.m) s << m;
   s << f.from;
   if (f.from_i != -1) s << f.from_i;
   if (f.add==flags::prepend) s << '+';
@@ -40,125 +43,108 @@ std::ostream& operator<<(std::ostream& s, const flags& f) {
   if (f.add==flags::append) s << '+';
   return s;
 }
-std::ostream& operator<<(std::ostream& s, const plot_regex& ex) {
+std::ostream& operator<<(std::ostream& s, const hist_regex& ex) {
   s << static_cast<const flags&>(ex);
+  /*
   const unsigned nblocks = ex.blocks.size();
   if (nblocks>0) {
     s << "›" << ex.blocks[0] << "›";
     if (nblocks>1) s << ex.blocks[1] << "›";
   }
+  */
   return s;
 }
 
-plot_regex::plot_regex(const char* str) {
+hist_regex::hist_regex(const char* str) {
   if (!str || *str=='\0') throw error("blank expression");
-  bool last_was_field = false, last_was_delim = false;
-  unsigned esc = 0;
+  bool last_was_field = false, no_m = true;
+  int plus_pos = 0;
   char delim = 0;
   const char *s = str;
-  for (char c; (c=*s); ++s) {
-    if (!delim) {
-      flags::field f = flags::no_field;
-      switch (c) {
-        case 's':
-          if (!no_from()) throw bad_expression(
-            str,"\'s\' must appear before field flags");
-          this->s = true; continue;
-        case 'w':
-          if (!no_from()) throw bad_expression(
-            str,"\'w\' must appear before field flags");
-          this->w = true; continue;
-        case 'i':
-          if (!no_from()) throw bad_expression(
-            str,"\'i\' must appear before field flags");
-          this->i = true; continue;
-        case 'g': f = flags::g; break;
-        case 't': f = flags::t; break;
-        case 'x': f = flags::x; break;
-        case 'y': f = flags::y; break;
-        case 'z': f = flags::z; break;
-        case 'l': f = flags::l; break;
-        case 'n': f = flags::n; break;
-        case 'f': f = flags::f; break;
-        case 'd': f = flags::d; break;
-        case '+': { // concatenate
-          if (add) throw bad_expression(str,"too many \'+\'");
-          if (!no_to()) add = flags::append;
-          else if (!no_from()) add = flags::prepend;
-          else throw bad_expression(str,"\'+\' before first field flag");
-          last_was_field = false;
-          continue;
-        }
-        default: break;
+  for (char c; !delim && (c=*s); ++s) {
+    flags::field f = flags::no_field;
+    switch (c) {
+      case 's':
+        if (!no_from()) throw bad_expression(
+          str,"\'s\' can only appear before field flags");
+        this->s = true; continue;
+      case 'i':
+        if (!no_from()) throw bad_expression(
+          str,"\'i\' can only appear before field flags");
+        this->i = true; continue;
+      case 'g': f = flags::g; break;
+      case 't': f = flags::t; break;
+      case 'x': f = flags::x; break;
+      case 'y': f = flags::y; break;
+      case 'z': f = flags::z; break;
+      case 'l': f = flags::l; break;
+      case 'n': f = flags::n; break;
+      case 'f': f = flags::f; break;
+      case 'd': f = flags::d; break;
+      case '+': { // concatenate
+        if (plus_pos) throw bad_expression(str,"too many \'+\'");
+        if (no_from()) plus_pos = 1;
+        else if (no_to()) plus_pos = 2;
+        else plus_pos = 3;
+        last_was_field = false;
+        continue;
       }
-      if (f != flags::no_field) {
-        if (no_from()) from = f;
-        else if (no_to()) to = f;
-        else throw bad_expression(str,"too many field flags");
-        last_was_field = true;
-      } else {
-        if (strchr("/|:",c)) {
-          delim = c; // first delimeter
-          last_was_delim = true;
-        } else if ((std::isdigit(c) || c=='-') && last_was_field) {
-          if (!no_to()) throw bad_expression(
-            str,"only first field may be indexed");
-          std::string num_str{c};
-          for (++s; std::isdigit(c=*s); ++s) num_str += c;
-          --s;
-          int num;
-          try {
-            num = stoi(num_str);
-          } catch (...) {
-            throw bad_expression(str,"index ",num_str," not convertible to int");
-          }
+      default: break;
+    }
+    if (f != flags::no_field) {
+      if (no_from()) from = f;
+      else if (no_to()) to = f;
+      else throw bad_expression(str,"too many field flags");
+      last_was_field = true;
+    } else {
+      if (strchr("/|:",c)) {
+        delim = c; // first delimeter
+        last_was_delim = true;
+      } else if (std::isdigit(c) || c=='-') {
+        if (last_was_field && !no_to()) throw bad_expression(
+          str,"only first field may be indexed");
+        if (!no_m && no_from()) throw bad_expression(
+          str,"multiple match indices");
+        auto num_begin = s;
+        do c = *++s;
+        while (std::isdigit(c) || c=='-');
+        int num;
+        if (!boost::conversion::
+            try_lexical_convert(num_begin,s-num_begin,num))
+          throw bad_expression(str,
+            std::string{num_begin,s}," is not convertible to int");
+        if (last_was_field) {
           from_i = num;
           if (from_i!=num) throw bad_expression(
-            str,"index ",num_str," out of bound");
-        } else throw bad_expression(str,"unrecognized flag \'",c,'\'');
-        last_was_field = false;
-      }
-    } else { // delimiter has been established
-      if (last_was_delim) {
-        blocks.emplace_back();
-        last_was_delim = false;
-      }
-      auto& block = blocks.back();
-      if (c=='\\') ++esc;
-      else if (esc) {
-        if (c == delim) {
-          block.append(esc-1,'\\');
-          if (esc%2) block += delim;
-          else block += '\\', last_was_delim = true;
-        } else block.append(esc,'\\'), block += c;
-        esc = 0;
-      }
-      else if (c == delim) last_was_delim = true;
-      else block += c;
+            str,"field index ",num_str," out of bound");
+        } else {
+          m = num;
+          if (m!=num) throw bad_expression(
+            str,"match index ",num_str," out of bound");
+          no_m = false;
+        }
+        --s;
+      } else throw bad_expression(str,"unrecognized flag \'",c,'\'');
+      last_was_field = false;
     }
   } // end for
-  if (esc) blocks.back().append(esc,'\\');
 
-  const unsigned nblocks = blocks.size();
-
-  if (add && no_to()) throw bad_expression(
-    str,"\'+\' requires both fields stated explicitly");
+  if (plus_pos) {
+    if (no_from()) throw bad_expression(str,"\'+\' without a field");
+    else if (no_to()) ++plus_pos;
+    switch (plus_pos) {
+      case 2: add = prepend; break;
+      case 3: add = append; break;
+      default: throw bad_expression(str,"invalid \'+\' position");
+    }
+  }
 
   if (no_from()) from = flags::g; // default to group for 1st
   if (no_to()) to = from; // default to same for 2nd
 
-  if (same()) {
-    if (nblocks==0) throw bad_expression(
-      str,"single field expression without matching pattern");
-    else if (!this->s && nblocks<2) throw bad_expression(
-      str,"single field matching expression without \'s\' or command");
-  }
+  if (!delim) return;
 
-  if (i && nblocks<1) i = false; // 'i' has no effect
-  if (w && nblocks<2) w = false; // 'w' has no effect
-  // this is corrected so that --verbose doesn't print
-
-  if (i && nblocks>1 && !w) w = true;
+  // TODO: parse regex and subst
 
   // create regex if specified and not empty
   if (nblocks && !blocks.front().empty()) {
@@ -191,7 +177,7 @@ plot_regex::plot_regex(const char* str) {
   }
 }
 
-shared_str plot_regex::operator()(shared_str str) const {
+shared_str hist_regex::operator()(shared_str str) const {
   if (re.empty()) // no regex
     return blocks.size()>1 ? make_shared_str(blocks[1]) : str;
 
@@ -210,12 +196,12 @@ shared_str plot_regex::operator()(shared_str str) const {
   do {
     using namespace boost::regex_constants;
     auto& prefix = it->prefix();
-    out = std::copy(prefix.first, prefix.second, out); 
+    out = std::copy(prefix.first, prefix.second, out);
     out = it->format(out, blocks[1], format_all);
     last = (*it)[0].second;
     ++it;
   } while (it!=end);
-  std::copy(last, str->cend(), out); 
+  std::copy(last, str->cend(), out);
 
   switch (add) {
     case no_add  : break;

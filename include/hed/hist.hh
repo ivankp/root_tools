@@ -1,5 +1,5 @@
-#ifndef IVANP_RXPLOT_HIST_HH
-#define IVANP_RXPLOT_HIST_HH
+#ifndef IVANP_HED_HIST_HH
+#define IVANP_HED_HIST_HH
 
 #include <TH1.h>
 #include <TAxis.h>
@@ -26,10 +26,10 @@ public:
   hist(const hist&) = delete;
   hist(hist&& o): h(o.h), legend(std::move(o.legend)) { o.h = nullptr; }
 
-  inline TH1& operator*() noexcept { return *h; }
-  inline TH1* operator->() noexcept { return h; }
+  inline TH1& operator* () noexcept { return *h; }
+  inline TH1* operator->() noexcept { return  h; }
 
-  bool operator()(const std::vector<plot_regex>& exprs, shared_str& group);
+  bool operator()(const std::vector<hist_regex>& exprs, shared_str& group);
 
 }; // end hist
 
