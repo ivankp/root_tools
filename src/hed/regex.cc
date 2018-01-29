@@ -161,7 +161,7 @@ hist_regex::hist_regex(const char*& str): flags() {
     if (!space) space = pos;
 
     fcn = runtime_curried<TH1*>::make(
-      {str,size_t(space-str)}, {space,size_t(pos-space)} );
+      {str,size_t(space-str)}, {space+1,size_t(pos-space-1)} );
   }
 }
 

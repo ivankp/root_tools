@@ -79,7 +79,7 @@ public:
         if (!level) {
           if (first) first = false, cout << "H ";
           else cout << "  ";
-        }
+        } else for (int i=0; i<level; ++i) cout << "  ";
         cout << static_cast<const flags&>(expr) << ':'
           << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
           << expr.re.str() << "\033[0m " << *str;
