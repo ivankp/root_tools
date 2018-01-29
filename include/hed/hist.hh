@@ -16,8 +16,6 @@ struct hist {
   TH1 *h;
   shared_str legend;
 
-  static bool verbose;
-
   hist(TH1* h): h(h) { }
   hist(const hist&) = delete;
   hist(hist&& o): h(o.h), legend(std::move(o.legend)) { o.h = nullptr; }

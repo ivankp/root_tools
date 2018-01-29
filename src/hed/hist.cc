@@ -7,7 +7,7 @@
 
 #include "hed/hist.hh"
 
-bool hist::verbose = false;
+extern bool verbose;
 
 const char* get_file_str(const TDirectory* dir) {
   for (const TDirectory* m; ; dir = m) {
@@ -72,7 +72,7 @@ public:
       const bool matched = !!result;
       const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
-      if (hist::verbose) {
+      if (verbose) {
         using std::cout;
         using std::endl;
 

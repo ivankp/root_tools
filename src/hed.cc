@@ -65,6 +65,8 @@ void loop(TDirectory* dir) { // LOOP
   }
 }
 
+bool verbose = false;
+
 int main(int argc, char* argv[]) {
   std::string ofname;
   std::vector<const char*> ifnames;
@@ -83,7 +85,7 @@ int main(int argc, char* argv[]) {
       (expr_args,'r',"suffix/regex/subst/expr")
       (group_cmds,'g',"group commands")
       (sort_groups,"--sort","sort groups alphabetically")
-      (hist::verbose,{"-v","--verbose"},"print regex transformations")
+      (verbose,{"-v","--verbose"}, "print expressions and strings")
       (logx,"--logx")
       (logy,"--logy")
       (logz,"--logz")
@@ -108,7 +110,10 @@ int main(int argc, char* argv[]) {
     }
 
     exprs.reserve(expr_args.size());
-    for (const char* str : expr_args) exprs.emplace_back(str);
+    if (verbose) cout << "\033[35mExpressions:\033[0m\n";
+    for (const char* str : expr_args) {
+      while (*str) exprs.emplace_back(str);
+    }
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;
     return 1;

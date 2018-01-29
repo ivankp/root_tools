@@ -9,8 +9,7 @@
 #include "runtime_curried.hh"
 #include "error.hh"
 
-#define TEST(var) \
-  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+extern bool verbose;
 
 using namespace ivanp;
 
@@ -100,10 +99,10 @@ const char* consume_regex(const char* s) noexcept {
 }
 
 const char* consume_subst(const char* s) noexcept {
-  const char* seek = s;
+  const char* seek = s+1;
   char c = *seek;
   while (c==' ' || c=='\t') c = *++seek;
-  if (c == '{') return nullptr;
+  if (c=='{'||c==';') return nullptr;
   return consume_regex(s);
 }
 
@@ -124,6 +123,10 @@ hist_regex::hist_regex(const char*& str): flags() {
 
   char c = *str; // consume white space
   while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r') c = *++str;
+
+  if (verbose) {
+    std::cout << str << std::endl;
+  }
 
   flags fl;
   const char* suffix_end = consume_suffix(str,fl); // parse suffix
@@ -146,20 +149,15 @@ hist_regex::hist_regex(const char*& str): flags() {
   } else str = suffix_end;
 
   c = *str;
-  if (!c) return;
-
-  if (c==';'||c=='\n'||c=='\r') { // skip to beginning of next expression
-    do c=*++str;
-    while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r');
-    if (!c) return;
-  } else if (c==' '||c=='\t') { // skip spaces
+  if (c==' '||c=='\t') { // skip spaces
     do c=*++str;
     while (c==' '||c=='\t');
   }
+  if (!c || c==';'||c=='\n'||c=='\r') return; // end of expression
 
   if (c=='{') { // subexpressions
     const char* pos = seek_matching_brace(str);
-    if (!pos) throw std::runtime_error("missing closing \'{\'");
+    if (!pos) throw std::runtime_error("missing closing \'}\'");
 
     const char* end = pos;
     do c = *--end; // remove trailing spaces
