@@ -107,6 +107,17 @@ const char* consume_subst(const char* s) noexcept {
   return consume_regex(s);
 }
 
+const char* seek_matching_brace(const char* s) noexcept {
+  int i = 0;
+  char c;
+  while ((c=*++s)) {
+    if (c=='{') ++i;
+    else if (c=='}')
+      if (--i) break;
+  }
+  return c ? s : nullptr;
+}
+
 hist_regex::hist_regex(const char*& str): flags() {
   if (!str) throw std::runtime_error("null expression");
   if (*str=='\0') return;
@@ -146,11 +157,19 @@ hist_regex::hist_regex(const char*& str): flags() {
     while (c==' '||c=='\t');
   }
 
-  if (c == '{') { // subexpressions
-    while (*str!='}') {
-      if (!*str) throw std::runtime_error("unterminated \'{\' in expression");
-      exprs.emplace_back(str);
-    }
+  if (c=='{') { // subexpressions
+    const char* pos = seek_matching_brace(str);
+    if (!pos) throw std::runtime_error("missing closing \'{\'");
+
+    const char* end = pos;
+    do c = *--end; // remove trailing spaces
+    while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r');
+
+    std::string sub_expr(str+1,end+1);
+    str = sub_expr.c_str(); // parse subexpressions
+    while (*str) exprs.emplace_back(str);
+
+    str = pos+1;
   } else { // function
     const char *pos = str, *space = nullptr;
     for (char c;;) {
@@ -162,6 +181,8 @@ hist_regex::hist_regex(const char*& str): flags() {
 
     fcn = runtime_curried<TH1*>::make(
       {str,size_t(space-str)}, {space+1,size_t(pos-space-1)} );
+
+    str = pos;
   }
 }
 

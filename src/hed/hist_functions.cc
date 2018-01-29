@@ -32,6 +32,14 @@ struct line_color
   }
 };
 
+struct line_width
+: public base, private interpreted_args<0,Width_t> {
+  using interpreted_args::interpreted_args;
+  void operator()(type h) const {
+    h->SetLineWidth(arg<0>());
+  }
+};
+
 } // ----------------------------------------------------------------
 
 #define ADD(NAME) { #NAME, &fcn_factory<NAME> }
@@ -40,6 +48,7 @@ template <>
 typename base::map_type base::all {
   ADD(norm),
   ADD(scale),
-  ADD(line_color)
+  ADD(line_color),
+  ADD(line_width)
 };
 
