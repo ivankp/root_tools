@@ -1,5 +1,6 @@
 #include "hed/regex.hh"
 
+#include <iostream>
 #include <algorithm>
 #include <iterator>
 
@@ -7,6 +8,9 @@
 
 #include "runtime_curried.hh"
 #include "error.hh"
+
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
 
 using namespace ivanp;
 
@@ -23,12 +27,14 @@ const char* consume_suffix(const char* s, flags& fl) {
       case 'n': f = flags::n; break;
       case 'f': f = flags::f; break;
       case 'd': f = flags::d; break;
-      case 's':
+      case 's': {
         if (fl.from || fl.add) return nullptr; // after field or +
         fl.s = true; continue;
-      case 'i':
+      }
+      case 'i': {
         if (fl.from || fl.add) return nullptr; // after field or +
         fl.i = true; continue;
+      }
       case '+': { // concatenate
         if (fl.add) return nullptr; // multiple +
         if (!fl.from) fl.add = flags::prepend;
@@ -45,7 +51,7 @@ const char* consume_suffix(const char* s, flags& fl) {
       } else return nullptr; // multiple field flags
       f = flags::none;
     } else {
-      if (strchr("/|:,{",c)) return s;
+      if (c=='/'||c=='|'||c==':'||c==','||c=='{') return s;
       else if (std::isdigit(c) || c=='-') {
         if (fl.add && *(s-1)=='+') return nullptr; // number after +
         if (fl.to) return nullptr; // index after second field
@@ -86,7 +92,8 @@ const char* next_delim(const char* s) noexcept {
 }
 
 const char* consume_regex(const char* s) noexcept {
-  if (!strchr("/|:,",*s)) return nullptr;
+  char c = *s;
+  if (!(c=='/'||c=='|'||c==':'||c==',')) return nullptr;
   const char* end = next_delim(s);
   if (*end != *s) return nullptr;
   return end;
@@ -104,14 +111,15 @@ hist_regex::hist_regex(const char*& str): flags() {
   if (!str) throw std::runtime_error("null expression");
   if (*str=='\0') return;
 
-  char c;
-  do c=*++str; // consume white space
-  while (strchr(" \t;\n\r",c));
+  char c = *str; // consume white space
+  while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r') c = *++str;
 
   flags fl;
   const char* suffix_end = consume_suffix(str,fl); // parse suffix
   if (suffix_end) static_cast<flags&>(*this) = fl;
   else suffix_end = str;
+  if (!from) from = flags::g;
+  if (!to) to = from;
 
   if ((str = consume_regex(suffix_end))) { // parse regex
     ++suffix_end;
@@ -123,17 +131,19 @@ hist_regex::hist_regex(const char*& str): flags() {
       sub.reset(new std::string(str+1,subst_end));
       str = subst_end;
     }
+    ++str; // skip past closing delimeter
   } else str = suffix_end;
 
-  do c=*++str;
-  while (c==' ' || c=='\t');
-
+  c = *str;
   if (!c) return;
-  if (c==';' || c=='\n' || c=='\r') {
+
+  if (c==';'||c=='\n'||c=='\r') { // skip to beginning of next expression
     do c=*++str;
-    while (strchr(" \t;\n\r",c));
-    // str now points to beginning of next expression
+    while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r');
     if (!c) return;
+  } else if (c==' '||c=='\t') { // skip spaces
+    do c=*++str;
+    while (c==' '||c=='\t');
   }
 
   if (c == '{') { // subexpressions
@@ -146,7 +156,7 @@ hist_regex::hist_regex(const char*& str): flags() {
     for (char c;;) {
       c = *++pos;
       if (!space && c==' ') space = pos;
-      if (!c || strchr(";\n\r",c)) break;
+      if (!c || c==';'||c=='\n'||c=='\r') break;
     }
     if (!space) space = pos;
 
@@ -187,6 +197,28 @@ shared_str hist_regex::operator()(shared_str str) const {
   return result;
 }
 
-std::ostream& operator<<(std::ostream& out, const hist_regex& r) {
-  return out << r.re.str();
+#define CASE(F) case flags::F : s << (*#F); break;
+std::ostream& operator<<(std::ostream& s, flags::field field) {
+  switch (field) {
+    CASE(g)
+    CASE(n)
+    CASE(t)
+    CASE(x)
+    CASE(y)
+    CASE(z)
+    CASE(l)
+    CASE(d)
+    CASE(f)
+    default: ;
+  }
+  return s;
+}
+#undef CASE
+
+std::ostream& operator<<(std::ostream& s, const flags& f) {
+  if (f.s) s << 's';
+  if (f.i) s << 'i';
+  s << f.from;
+  s << f.to;
+  return s;
 }

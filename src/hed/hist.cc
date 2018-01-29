@@ -1,4 +1,4 @@
-#include <ostream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <array>
@@ -40,20 +40,20 @@ class applicator {
   shared_str& group;
   // temporary strings
   std::array<std::vector<shared_str>,flags::nfields> fields;
+  inline auto& at(flags::field f) noexcept { return fields[f-1]; }
 
 public:
   applicator(hist& h, shared_str& group): h(h), group(group) {
     for (auto& field : fields) { field.emplace_back(); }
   }
 
-#define FIELD(I) std::get<flags::I>(fields).back()
-  bool operator()(const std::vector<hist_regex>& exprs) {
+#define FIELD(F) std::get<flags::F-1>(fields).back()
+  bool operator()(const std::vector<hist_regex>& exprs, int level=0) {
     if (exprs.empty()) { group = h.init(flags::n); return true; }
 
-    if (hist::verbose && exprs.size()>1) std::cout << '\n';
-
+    bool first = true;
     for (const hist_regex& expr : exprs) {
-      auto& field = fields[expr.from];
+      auto& field = at(expr.from);
       int index = expr.from_i;
       if (index<0) index += field.size(); // make index positive
       if (index<0 || (unsigned(index))>field.size()) // overflow check
@@ -73,27 +73,28 @@ public:
       const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
       if (hist::verbose) {
-        std::cout << expr << ' ' << *str;
-        if (new_str) std::cout << " => " << *result;
-        else {
-          if (matched) std::cout << " \033[32m✓";
-          else { std::cout << " \033[31m✗";
-            if (expr.s) std::cout << " discarded";
-          }
-          std::cout << "\033[0m";
+        using std::cout;
+        using std::endl;
+
+        if (!level) {
+          if (first) first = false, cout << "H ";
+          else cout << "  ";
         }
-        std::cout << std::endl;
+        cout << static_cast<const flags&>(expr) << ':'
+          << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
+          << expr.re.str() << "\033[0m " << *str;
+        if (new_str)
+          cout <<" |"<< expr.from << ":" << expr.to <<"> "<< *result;
+        cout << endl;
       }
 
       if (matched) {
         if (new_str)
-          fields[expr.to].emplace_back(result);
+          at(expr.to).emplace_back(result);
 
         // TODO: fix when fcn and exprs are put in union
         if (expr.fcn) expr.fcn(h.h);
-        else return operator()(expr.exprs);
-
-        return true;
+        else if (!operator()(expr.exprs,level+1)) return false;
 
       } else if (expr.s) return false;
     } // end expressions loop

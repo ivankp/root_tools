@@ -1,9 +1,9 @@
 #ifndef IVANP_HED_REGEX_HH
 #define IVANP_HED_REGEX_HH
 
-#include <iostream>
 #include <vector>
 #include <functional>
+#include <iosfwd>
 
 #include <boost/regex.hpp>
 
@@ -26,6 +26,8 @@ struct flags {
   // operator overloading for enums doesn't work for bit fields in GCC
   // https://stackoverflow.com/q/46086830/2640636
 };
+std::ostream& operator<<(std::ostream&, flags::field);
+std::ostream& operator<<(std::ostream&, const flags&);
 
 class TH1;
 
@@ -40,7 +42,6 @@ struct hist_regex: flags {
   hist_regex(const char*& str); // parsing constructor
   shared_str operator()(shared_str) const; // apply regex
 };
-std::ostream& operator<<(std::ostream&, const hist_regex&);
 
 #endif
 
