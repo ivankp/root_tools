@@ -9,6 +9,9 @@
 #include "runtime_curried.hh"
 #include "error.hh"
 
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+
 extern bool verbose;
 
 using namespace ivanp;
@@ -129,18 +132,18 @@ hist_regex::hist_regex(const char*& str): flags() {
   }
 
   flags fl;
-  const char* suffix_end = consume_suffix(str,fl); // parse suffix
+  const char* suffix_end = consume_suffix(str,fl); // parse SUFFIX ==
   if (suffix_end) static_cast<flags&>(*this) = fl;
   else suffix_end = str;
   if (!from) from = flags::g;
   if (!to) to = from;
 
-  if ((str = consume_regex(suffix_end))) { // parse regex
+  if ((str = consume_regex(suffix_end))) { // parse REGEX ===========
     ++suffix_end;
     if (suffix_end!=str) // do not assign regex if blank
       re.assign(suffix_end,str);
 
-    const char* subst_end = consume_subst(str); // parse subst
+    const char* subst_end = consume_subst(str); // parse SUBST ======
     if (subst_end) {
       sub.reset(new std::string(str+1,subst_end));
       str = subst_end;
@@ -153,9 +156,9 @@ hist_regex::hist_regex(const char*& str): flags() {
     do c=*++str;
     while (c==' '||c=='\t');
   }
-  if (!c || c==';'||c=='\n'||c=='\r') return; // end of expression
+  if (!c || c==';'||c=='\n'||c=='\r') return; // end of expression ==
 
-  if (c=='{') { // subexpressions
+  if (c=='{') { // SUBEXPRESSIONS ===================================
     const char* pos = seek_matching_brace(str);
     if (!pos) throw std::runtime_error("missing closing \'}\'");
 
@@ -168,7 +171,7 @@ hist_regex::hist_regex(const char*& str): flags() {
     while (*str) exprs.emplace_back(str);
 
     str = pos+1;
-  } else { // function
+  } else { // FUNCTION ==============================================
     const char *pos = str, *space = nullptr;
     for (char c;;) {
       c = *++pos;
@@ -177,12 +180,14 @@ hist_regex::hist_regex(const char*& str): flags() {
     }
     if (!space) space = pos;
 
-    fcn = runtime_curried<TH1*>::make(
-      {str,size_t(space-str)}, {space+1,size_t(pos-space-1)} );
+    boost::string_view name(str,size_t(space-str)), args;
+    if (space!=pos) ++space, args = { space,size_t(pos-space) };
+
+    fcn = runtime_curried<TH1*>::make(name,args);
 
     str = pos;
   }
-}
+} // ================================================================
 
 shared_str hist_regex::operator()(shared_str str) const {
   if (re.empty()) return sub ? sub : str; // no regex

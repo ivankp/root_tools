@@ -15,7 +15,9 @@ struct runtime_curried {
   using base = runtime_curried;
   using function_type = std::function<void(T)>;
   virtual void operator()(T) const = 0;
-  static function_type make(boost::string_view name, boost::string_view arg_str) {
+  static function_type make(
+    boost::string_view name, boost::string_view arg_str
+  ) {
     try {
       return (*all.at(name))(arg_str);
     } catch (const std::exception& e) {

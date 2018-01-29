@@ -1,39 +1,43 @@
-#include "runtime_curried.hh"
-
 #include <string>
 
 #include <TH1.h>
 #include <TAxis.h>
 
+#include "runtime_curried.hh"
+
 namespace {
 using base = runtime_curried<TH1*>;
 
-struct norm
-: public base, private interpreted_args<1,double> {
+struct norm: public base,
+  private interpreted_args<1,double>
+{
   norm(boost::string_view arg_str): interpreted_args({1},arg_str) { }
   void operator()(type h) const {
     h->Scale(arg<0>()/h->Integral("width"));
   }
 };
 
-struct scale
-: public base, private interpreted_args<1,double,std::string> {
+struct scale: public base,
+  private interpreted_args<1,double,std::string>
+{
   scale(boost::string_view arg_str): interpreted_args({{}},arg_str) { }
   void operator()(type h) const {
     h->Scale(arg<0>()/h->Integral(arg<1>().c_str()));
   }
 };
 
-struct line_color
-: public base, private interpreted_args<0,Color_t> {
+struct line_color: public base,
+  private interpreted_args<0,Color_t>
+{
   using interpreted_args::interpreted_args;
   void operator()(type h) const {
     h->SetLineColor(arg<0>());
   }
 };
 
-struct line_width
-: public base, private interpreted_args<0,Width_t> {
+struct line_width: public base,
+  private interpreted_args<0,Width_t>
+{
   using interpreted_args::interpreted_args;
   void operator()(type h) const {
     h->SetLineWidth(arg<0>());

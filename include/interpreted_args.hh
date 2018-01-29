@@ -52,28 +52,37 @@ private:
     convert_impl<I>(it,end);
     if ((++it)!=end) throw std::runtime_error("too many arguments");
   }
+
+  inline auto make_split_iterator_impl(boost::string_view str) {
+    return boost::make_split_iterator(
+      str, boost::token_finder([](char c){ return c==' '; })
+    );
+  }
+  inline auto make_split_iterator(boost::string_view str) {
+    // TODO: find easier way to parse function arguments
+    if (str.size()) return make_split_iterator_impl(str);
+    return decltype(make_split_iterator_impl(str)){ };
+  }
+
 public:
   template <typename FindIterator, typename End=FindIterator>
   interpreted_args(defaults_tup&& defaults, FindIterator begin, End end={ }) {
     ivanp::tail_assign(args,std::move(defaults));
     convert<0>(begin,end);
   }
+
   template <typename FindIterator, typename End=FindIterator>
   interpreted_args(FindIterator begin, End end={ }) {
     static_assert(Ndefaults==0);
     convert<0>(begin,end);
   }
+
   interpreted_args(defaults_tup&& defaults, boost::string_view str)
-  : interpreted_args(
-    std::move(defaults),
-    // boost::make_split_iterator(str,boost::first_finder(",",boost::is_equal{}))
-    boost::make_split_iterator(
-      str, boost::token_finder([](char c){ return c==' '; }))
-  ) { }
-  interpreted_args(boost::string_view str): interpreted_args(
-    boost::make_split_iterator(
-      str, boost::token_finder([](char c){ return c==' '; }))
-  ) { }
+  : interpreted_args( std::move(defaults), make_split_iterator(str)) { }
+
+  interpreted_args(boost::string_view str)
+  : interpreted_args( make_split_iterator(str) ) { }
+
   virtual ~interpreted_args() { }
 };
 
