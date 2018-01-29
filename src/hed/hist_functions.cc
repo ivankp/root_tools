@@ -10,7 +10,7 @@ using base = runtime_curried<TH1*>;
 
 struct norm
 : public base, private interpreted_args<1,double> {
-  norm(boost::string_view str): interpreted_args({1},str) { }
+  norm(boost::string_view arg_str): interpreted_args({1},arg_str) { }
   void operator()(type h) const {
     h->Scale(arg<0>()/h->Integral("width"));
   }
@@ -18,7 +18,7 @@ struct norm
 
 struct scale
 : public base, private interpreted_args<1,double,std::string> {
-  scale(boost::string_view str): interpreted_args({{}},str) { }
+  scale(boost::string_view arg_str): interpreted_args({{}},arg_str) { }
   void operator()(type h) const {
     h->Scale(arg<0>()/h->Integral(arg<1>().c_str()));
   }

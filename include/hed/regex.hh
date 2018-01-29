@@ -10,9 +10,9 @@
 #include "shared_str.hh"
 
 struct flags {
-  enum field { g, n, t, x, y, z, l, d, f, no_field };
-  enum add_f { no_add = 0, prepend, append };
-  static constexpr unsigned nfields = no_field;
+  enum field { none, g, n, t, x, y, z, l, d, f };
+  enum add_f { no_add, prepend, append };
+  static constexpr unsigned nfields = 9;
   bool s     : 1; // select (drop not matching histograms)
   bool i     : 1; // invert selection and matching
   add_f add  : 2; // prepend or append
@@ -22,26 +22,22 @@ struct flags {
   int from_i : 8; // field version, python index sign convention
   int m      : 8; // match index
   flags(): s(0), i(0), add(no_add),
-           from(no_field), to(no_field), from_i(-1), m(0) { }
-  inline bool no_from() const noexcept { return from == no_field; }
-  inline bool no_to  () const noexcept { return to   == no_field; }
-  inline bool same   () const noexcept { return from == to; }
+           from(none), to(none), from_i(-1), m(0) { }
   // operator overloading for enums doesn't work for bit fields in GCC
   // https://stackoverflow.com/q/46086830/2640636
 };
-std::ostream& operator<<(std::ostream&, flags::field);
-std::ostream& operator<<(std::ostream&, const flags&);
 
 class TH1;
 
 struct hist_regex: flags {
   boost::regex re;
-  std::string sub;
-  std::function<void(TH1&)> f;
+  shared_str sub;
 
+  std::function<void(TH1*)> fcn;
   std::vector<hist_regex> exprs;
+  // TODO: put fcn and exprs in a union
 
-  hist_regex(const char* str); // parsing constructor
+  hist_regex(const char*& str); // parsing constructor
   shared_str operator()(shared_str) const; // apply regex
 };
 std::ostream& operator<<(std::ostream&, const hist_regex&);

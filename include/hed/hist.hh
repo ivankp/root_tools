@@ -7,16 +7,12 @@
 #include "shared_str.hh"
 #include "hed/regex.hh"
 
-class hist {
-  const char* get_file_str();
-  std::string get_dirs_str();
+struct hist {
   std::string init_impl(flags::field field);
-
   inline shared_str init(flags::field field) {
     return make_shared_str(init_impl(field));
   }
 
-public:
   TH1 *h;
   shared_str legend;
 

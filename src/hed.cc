@@ -3,11 +3,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <map>
 #include <stdexcept>
 #include <memory>
-
-// #include <boost/optional.hpp>
 
 #include <TFile.h>
 #include <TDirectory.h>
@@ -23,13 +20,14 @@
 #include "shared_str.hh"
 #include "hed/regex.hh"
 #include "hed/hist.hh"
-#include "runtime_curried.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
 
-// using boost::optional;
-using namespace std;
+using std::cout;
+using std::endl;
+using std::cerr;
+using std::get;
 using namespace ivanp;
 
 template <typename InputIt, typename Pred>
@@ -82,7 +80,7 @@ int main(int argc, char* argv[]) {
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
-      (expr_args,'r',"regular expressions flags/regex/fmt/...")
+      (expr_args,'r',"suffix/regex/subst/expr")
       (group_cmds,'g',"group commands")
       (sort_groups,"--sort","sort groups alphabetically")
       (hist::verbose,{"-v","--verbose"},"print regex transformations")

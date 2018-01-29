@@ -68,11 +68,11 @@ public:
     std::move(defaults),
     // boost::make_split_iterator(str,boost::first_finder(",",boost::is_equal{}))
     boost::make_split_iterator(
-      str, boost::token_finder([](char c){ return c==','; }))
+      str, boost::token_finder([](char c){ return c==' '; }))
   ) { }
   interpreted_args(boost::string_view str): interpreted_args(
     boost::make_split_iterator(
-      str, boost::token_finder([](char c){ return c==','; }))
+      str, boost::token_finder([](char c){ return c==' '; }))
   ) { }
   virtual ~interpreted_args() { }
 };
