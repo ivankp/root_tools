@@ -5,11 +5,11 @@
 #include <TAxis.h>
 
 #include "shared_str.hh"
-#include "hed/regex.hh"
+#include "hed/expr.hh"
 
 struct hist {
-  std::string init_impl(flags::field field);
-  inline shared_str init(flags::field field) {
+  std::string init_impl(flags<TH1>::field field);
+  inline shared_str init(flags<TH1>::field field) {
     return make_shared_str(init_impl(field));
   }
 
@@ -23,7 +23,7 @@ struct hist {
   inline TH1& operator* () noexcept { return *h; }
   inline TH1* operator->() noexcept { return  h; }
 
-  bool operator()(const std::vector<hist_regex>& exprs, shared_str& group);
+  bool operator()(const std::vector<hist_expr>& exprs, shared_str& group);
 
 }; // end hist
 

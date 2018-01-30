@@ -18,7 +18,7 @@
 #include "tkey.hh"
 #include "ordered_map.hh"
 #include "shared_str.hh"
-#include "hed/regex.hh"
+#include "hed/expr.hh"
 #include "hed/hist.hh"
 
 #define TEST(var) \
@@ -39,7 +39,7 @@ InputIt rfind(InputIt first, InputIt last, Pred&& pred) {
   ).base();
 }
 
-std::vector<hist_regex> exprs;
+std::vector<hist_expr> exprs;
 ordered_map<
   std::vector<hist>, shared_str,
   deref_pred<std::hash<std::string>>,

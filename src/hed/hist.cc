@@ -1,11 +1,11 @@
+#include "hed/hist.hh"
+
 #include <iostream>
 #include <string>
 #include <vector>
 #include <array>
 
 #include <TDirectory.h>
-
-#include "hed/hist.hh"
 
 extern bool verbose;
 
@@ -48,11 +48,11 @@ public:
   }
 
 #define FIELD(F) std::get<flags::F-1>(fields).back()
-  bool operator()(const std::vector<hist_regex>& exprs, int level=0) {
+  bool operator()(const std::vector<hist_expr>& exprs, int level=0) {
     if (exprs.empty()) { group = h.init(flags::n); return true; }
 
     bool first = true;
-    for (const hist_regex& expr : exprs) {
+    for (const hist_expr& expr : exprs) {
       auto& field = at(expr.from);
       int index = expr.from_i;
       if (index<0) index += field.size(); // make index positive
@@ -116,6 +116,6 @@ public:
 #undef FIELD
 };
 
-bool hist::operator()(const std::vector<hist_regex>& exprs, shared_str& group) {
+bool hist::operator()(const std::vector<hist_expr>& exprs, shared_str& group) {
   return applicator(*this,group)(exprs);
 }

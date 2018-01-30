@@ -1,4 +1,4 @@
-#include "hed/regex.hh"
+#include "hed/expr.hh"
 
 #include <iostream>
 #include <algorithm>
@@ -16,7 +16,38 @@ extern bool verbose;
 
 using namespace ivanp;
 
-const char* consume_suffix(const char* s, flags& fl) {
+const char* consume_int(const char* s, int& num) {
+  const char* num_begin = s;
+  char c;
+  do c = *++s;
+  while (std::isdigit(c) || c=='-');
+  if (!boost::conversion::try_lexical_convert(num_begin,s-num_begin,num))
+    return nullptr; // not a number
+  return --s;
+}
+
+const char* consume_flags(const char* s, regex_flags& fl) {
+  using flags = regex_flags;
+  for (char c; (c=*s); ++s) {
+    if (c=='s') fl.s = true;
+    else if (c=='i') fl.i = true;
+    else if (c=='/'||c=='|'||c==':'||c==','||c=='{') break;
+    else if (std::isdigit(c) || c=='-') {
+      if (fl.m) return nullptr; // multiple match indices
+
+      int num;
+      if (!(s = consume_int(s,num))) return nullptr;
+
+      fl.m = num;
+      if (fl.m!=num) throw error("match index ",num," out of bound");
+
+    } else return nullptr; // unexpected character
+  } // end for
+  return s;
+}
+
+const char* consume_flags(const char* s, flags<TH1>& fl) {
+  using flags = flags<TH1>;
   flags::field f = flags::none;
   for (char c; (c=*s); ++s) {
     switch (c) {
@@ -29,14 +60,6 @@ const char* consume_suffix(const char* s, flags& fl) {
       case 'n': f = flags::n; break;
       case 'f': f = flags::f; break;
       case 'd': f = flags::d; break;
-      case 's': {
-        if (fl.from || fl.add) return nullptr; // after field or +
-        fl.s = true; continue;
-      }
-      case 'i': {
-        if (fl.from || fl.add) return nullptr; // after field or +
-        fl.i = true; continue;
-      }
       case '+': { // concatenate
         if (fl.add) return nullptr; // multiple +
         if (!fl.from) fl.add = flags::prepend;
@@ -53,26 +76,17 @@ const char* consume_suffix(const char* s, flags& fl) {
       } else return nullptr; // multiple field flags
       f = flags::none;
     } else {
-      if (c=='/'||c=='|'||c==':'||c==','||c=='{') return s;
+      if (c=='/'||c=='|'||c==':'||c==','||c=='{') break;
       else if (std::isdigit(c) || c=='-') {
         if (fl.add && *(s-1)=='+') return nullptr; // number after +
+        if (!fl.from) return nullptr; // index before first field
         if (fl.to) return nullptr; // index after second field
 
-        const char* num_begin = s;
-        do c = *++s;
-        while (std::isdigit(c) || c=='-');
         int num;
-        if (!boost::conversion::try_lexical_convert(num_begin,s-num_begin,num))
-          return nullptr; // not a number
+        if (!(s = consume_int(s,num))) return nullptr;
 
-        if (!fl.from) {
-          fl.m = num;
-          if (fl.m!=num) throw error("match index ",num," out of bound");
-        } else {
-          fl.from_i = num;
-          if (fl.from_i!=num) throw error("field index ",num," out of bound");
-        }
-        --s;
+        fl.from_i = num;
+        if (fl.from_i!=num) throw error("field index ",num," out of bound");
 
       } else return nullptr; // unexpected character
     }
@@ -120,7 +134,7 @@ const char* seek_matching_brace(const char* s) noexcept {
   return c ? s : nullptr;
 }
 
-hist_regex::hist_regex(const char*& str): flags() {
+basic_expr::basic_expr(const char*& str) {
   if (!str) throw std::runtime_error("null expression");
   if (*str=='\0') return;
 
@@ -131,17 +145,18 @@ hist_regex::hist_regex(const char*& str): flags() {
     std::cout << str << std::endl;
   }
 
-  flags fl;
-  const char* suffix_end = consume_suffix(str,fl); // parse SUFFIX ==
-  if (suffix_end) static_cast<flags&>(*this) = fl;
-  else suffix_end = str;
-  if (!from) from = flags::g;
-  if (!to) to = from;
+  regex_flags rf;
+  const char* flags_end = consume_flags(str,rf);
+  if (flags_end) static_cast<regex_flags&>(*this) = rf;
+  else flags_end = str;
 
-  if ((str = consume_regex(suffix_end))) { // parse REGEX ===========
-    ++suffix_end;
-    if (suffix_end!=str) // do not assign regex if blank
-      re.assign(suffix_end,str);
+  // parse FLAGS
+  this->assign_flags(flags_end); // virtual call
+
+  if ((str = consume_regex(flags_end))) { // parse REGEX ===========
+    ++flags_end;
+    if (flags_end!=str) // do not assign regex if blank
+      re.assign(flags_end,str);
 
     const char* subst_end = consume_subst(str); // parse SUBST ======
     if (subst_end) {
@@ -149,7 +164,7 @@ hist_regex::hist_regex(const char*& str): flags() {
       str = subst_end;
     }
     ++str; // skip past closing delimeter
-  } else str = suffix_end;
+  } else str = flags_end;
 
   c = *str;
   if (c==' '||c=='\t') { // skip spaces
@@ -167,8 +182,8 @@ hist_regex::hist_regex(const char*& str): flags() {
     while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r');
 
     std::string sub_expr(str+1,end+1);
-    str = sub_expr.c_str(); // parse subexpressions
-    while (*str) exprs.emplace_back(str);
+    // parse subexpressions
+    this->assign_exprs((str = sub_expr.c_str())); // virtual call
 
     str = pos+1;
   } else { // FUNCTION ==============================================
@@ -183,13 +198,31 @@ hist_regex::hist_regex(const char*& str): flags() {
     boost::string_view name(str,size_t(space-str)), args;
     if (space!=pos) ++space, args = { space,size_t(pos-space) };
 
-    fcn = runtime_curried<TH1*>::make(name,args);
+    // virtual call
+    this->assign_fcn(&name,&args);
+    // this->assign_fcn(
+    //   reinterpret_cast<void*>(&name),
+    //   reinterpret_cast<void*>(&args)
+    // );
 
     str = pos;
   }
 } // ================================================================
 
-shared_str hist_regex::operator()(shared_str str) const {
+template <>
+void expr<TH1>::assign_exprs(const char*& str) {
+  while (*str) exprs.emplace_back(str);
+}
+
+template <>
+const char* expr<TH1>::assign_fcn(void* name, void* args) {
+  fcn = runtime_curried<TH1*>::make(
+    *reinterpret_cast<boost::string_view*>(name),
+    *reinterpret_cast<boost::string_view*>(args)
+  );
+}
+
+shared_str basic_expr::operator()(shared_str str) const {
   if (re.empty()) return sub ? sub : str; // no regex
 
   auto last = str->cbegin();
@@ -221,8 +254,20 @@ shared_str hist_regex::operator()(shared_str str) const {
   return result;
 }
 
-#define CASE(F) case flags::F : s << (*#F); break;
-std::ostream& operator<<(std::ostream& s, flags::field field) {
+template <>
+void expr<TH1>::assign_flags(const char*& str) {
+  flags fl;
+  const char* flags_end = consume_flags(str,fl);
+  if (flags_end) {
+    static_cast<flags&>(*this) = fl;
+    str = flags_end;
+  }
+  if (!from) from = flags::g;
+  if (!to) to = from;
+}
+
+#define CASE(F) case flags<TH1>::F : s << (*#F); break;
+std::ostream& operator<<(std::ostream& s, flags<TH1>::field field) {
   switch (field) {
     CASE(g)
     CASE(n)
@@ -239,7 +284,7 @@ std::ostream& operator<<(std::ostream& s, flags::field field) {
 }
 #undef CASE
 
-std::ostream& operator<<(std::ostream& s, const flags& f) {
+std::ostream& operator<<(std::ostream& s, const flags<TH1>& f) {
   if (f.s) s << 's';
   if (f.i) s << 'i';
   s << f.from;

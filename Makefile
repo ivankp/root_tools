@@ -44,7 +44,7 @@ EXES := $(patsubst $(SRC)%$(EXT),$(BIN)%,$(shell $(GREP_EXES)))
 all: $(EXES)
 
 bin/hed: \
-  $(BLD)/program_options.o $(BLD)/hed/regex.o $(BLD)/hed/hist.o \
+  $(BLD)/program_options.o $(BLD)/hed/expr.o $(BLD)/hed/hist.o \
   $(BLD)/hed/hist_functions.o
 bin/envelopes: $(BLD)/program_options.o
 
