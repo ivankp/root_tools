@@ -18,6 +18,7 @@ struct regex_flags {
   int  m    : 8; // match index
   regex_flags(): s(0), i(0), add(no_add), m(0) { }
 };
+std::ostream& operator<<(std::ostream&, const regex_flags&);
 
 template <typename T> struct flags;
 
@@ -40,11 +41,9 @@ struct basic_expr: regex_flags {
   boost::regex re;
   shared_str sub;
 
-  basic_expr(const char*& str) { parse(str); }
   shared_str operator()(shared_str) const; // apply regex
 
-private:
-  // TODO: Don't call pure virtual functions from constructor?
+protected:
   void parse(const char*& str);
   virtual void assign_flags(const char*&) = 0;
   virtual void assign_exprs(const char*&) = 0;
@@ -57,7 +56,9 @@ struct expr final: flags<T>, basic_expr {
   std::function<void(T*)> fcn;
   std::vector<expr> exprs;
 
-  expr(const char*& str): flags<T>(), basic_expr(str) { }
+  expr(const char*& str): flags<T>(), basic_expr() {
+    basic_expr::parse(str);
+  }
 
 private:
   void assign_flags(const char*&) override;

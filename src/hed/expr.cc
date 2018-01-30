@@ -45,11 +45,11 @@ const char* consume_flags(const char* s, regex_flags& fl) {
   return s;
 }
 
-const char* consume_flags(const char* s, flags<TH1>& fl) {
+const char* consume_flags(const char* s, hist_expr& ex) {
   using flags = flags<TH1>;
+  flags fl;
   flags::field f = flags::none;
   regex_flags::add_f add = regex_flags::no_add;
-  // TODO: return add
   for (char c; (c=*s); ++s) {
     switch (c) {
       case 'g': f = flags::g; break;
@@ -92,6 +92,8 @@ const char* consume_flags(const char* s, flags<TH1>& fl) {
       } else return nullptr; // unexpected character
     }
   } // end for
+  static_cast<flags&>(ex) = fl;
+  ex.add = add;
   return s;
 }
 
@@ -257,12 +259,8 @@ shared_str basic_expr::operator()(shared_str str) const {
 
 template <>
 void expr<TH1>::assign_flags(const char*& str) {
-  flags fl;
-  const char* flags_end = consume_flags(str,fl);
-  if (flags_end) {
-    static_cast<flags&>(*this) = fl;
-    str = flags_end;
-  }
+  const char* flags_end = consume_flags(str,*this);
+  if (flags_end) str = flags_end;
   if (!from) from = flags::g;
   if (!to) to = from;
 }
@@ -285,9 +283,14 @@ std::ostream& operator<<(std::ostream& s, flags<TH1>::field field) {
 }
 #undef CASE
 
+std::ostream& operator<<(std::ostream& s, const regex_flags& f) {
+  if (f.s) s << 's';
+  if (f.i) s << 'i';
+  if (f.m) s << f.m;
+  return s;
+}
+
 std::ostream& operator<<(std::ostream& s, const flags<TH1>& f) {
-  // if (f.s) s << 's';
-  // if (f.i) s << 'i';
   s << f.from;
   s << f.to;
   return s;

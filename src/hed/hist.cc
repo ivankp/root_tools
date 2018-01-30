@@ -82,7 +82,11 @@ public:
           if (first) first = false, cout << "H ";
           else cout << "  ";
         } else for (int i=0; i<level; ++i) cout << "  ";
-        cout << static_cast<const flags&>(expr) << ':'
+        cout << static_cast<const regex_flags&>(expr) << expr.from;
+        if (expr.add==regex_flags::prepend) cout << '+';
+        cout << expr.to;
+        if (expr.add==regex_flags::append) cout << '+';
+        cout << ':'
           << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
           << expr.re.str() << "\033[0m " << *str;
         if (new_str)
