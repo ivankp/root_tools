@@ -27,7 +27,6 @@ const char* consume_int(const char* s, int& num) {
 }
 
 const char* consume_flags(const char* s, regex_flags& fl) {
-  using flags = regex_flags;
   for (char c; (c=*s); ++s) {
     if (c=='s') fl.s = true;
     else if (c=='i') fl.i = true;
@@ -49,6 +48,8 @@ const char* consume_flags(const char* s, regex_flags& fl) {
 const char* consume_flags(const char* s, flags<TH1>& fl) {
   using flags = flags<TH1>;
   flags::field f = flags::none;
+  regex_flags::add_f add = regex_flags::no_add;
+  // TODO: return add
   for (char c; (c=*s); ++s) {
     switch (c) {
       case 'g': f = flags::g; break;
@@ -61,9 +62,9 @@ const char* consume_flags(const char* s, flags<TH1>& fl) {
       case 'f': f = flags::f; break;
       case 'd': f = flags::d; break;
       case '+': { // concatenate
-        if (fl.add) return nullptr; // multiple +
-        if (!fl.from) fl.add = flags::prepend;
-        else fl.add = flags::append;
+        if (add) return nullptr; // multiple +
+        if (!fl.from) add = regex_flags::prepend;
+        else add = regex_flags::append;
         continue;
       }
       default: ;
@@ -72,13 +73,13 @@ const char* consume_flags(const char* s, flags<TH1>& fl) {
       if (!fl.from) fl.from = f;
       else if (!fl.to) {
         fl.to = f;
-        if (fl.add == flags::append) fl.add = flags::prepend;
+        if (add == regex_flags::append) add = regex_flags::prepend;
       } else return nullptr; // multiple field flags
       f = flags::none;
     } else {
       if (c=='/'||c=='|'||c==':'||c==','||c=='{') break;
       else if (std::isdigit(c) || c=='-') {
-        if (fl.add && *(s-1)=='+') return nullptr; // number after +
+        if (add && *(s-1)=='+') return nullptr; // number after +
         if (!fl.from) return nullptr; // index before first field
         if (fl.to) return nullptr; // index after second field
 
@@ -134,7 +135,7 @@ const char* seek_matching_brace(const char* s) noexcept {
   return c ? s : nullptr;
 }
 
-basic_expr::basic_expr(const char*& str) {
+void basic_expr::parse(const char*& str) {
   if (!str) throw std::runtime_error("null expression");
   if (*str=='\0') return;
 
@@ -215,7 +216,7 @@ void expr<TH1>::assign_exprs(const char*& str) {
 }
 
 template <>
-const char* expr<TH1>::assign_fcn(void* name, void* args) {
+void expr<TH1>::assign_fcn(void* name, void* args) {
   fcn = runtime_curried<TH1*>::make(
     *reinterpret_cast<boost::string_view*>(name),
     *reinterpret_cast<boost::string_view*>(args)
@@ -285,8 +286,8 @@ std::ostream& operator<<(std::ostream& s, flags<TH1>::field field) {
 #undef CASE
 
 std::ostream& operator<<(std::ostream& s, const flags<TH1>& f) {
-  if (f.s) s << 's';
-  if (f.i) s << 'i';
+  // if (f.s) s << 's';
+  // if (f.i) s << 'i';
   s << f.from;
   s << f.to;
   return s;

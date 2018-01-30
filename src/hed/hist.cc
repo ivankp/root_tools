@@ -22,7 +22,8 @@ std::string get_path_str(const TDirectory* dir) {
   else return get_path_str(m) + "/" + dir->GetName();
 }
 
-std::string hist::init_impl(flags::field field) {
+std::string hist::init_impl(flags<TH1>::field field) {
+  using flags = flags<TH1>;
   switch (field) {
     case flags::n: return h->GetName(); break;
     case flags::t: return h->GetTitle(); break;
@@ -39,8 +40,8 @@ class applicator {
   hist& h;
   shared_str& group;
   // temporary strings
-  std::array<std::vector<shared_str>,flags::nfields> fields;
-  inline auto& at(flags::field f) noexcept { return fields[f-1]; }
+  std::array<std::vector<shared_str>,flags<TH1>::nfields> fields;
+  inline auto& at(flags<TH1>::field f) noexcept { return fields[f-1]; }
 
 public:
   applicator(hist& h, shared_str& group): h(h), group(group) {
@@ -49,6 +50,7 @@ public:
 
 #define FIELD(F) std::get<flags::F-1>(fields).back()
   bool operator()(const std::vector<hist_expr>& exprs, int level=0) {
+    using flags = flags<TH1>;
     if (exprs.empty()) { group = h.init(flags::n); return true; }
 
     bool first = true;

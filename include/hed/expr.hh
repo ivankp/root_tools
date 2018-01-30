@@ -10,10 +10,13 @@
 #include "shared_str.hh"
 
 struct regex_flags {
-  bool s : 1; // select (drop if mismatch)
-  bool i : 1; // invert selection and matching
-  int  m : 6; // match index
-  regex_flags(): s(0), i(0), m(0) { }
+  enum add_f { no_add, prepend, append };
+  bool s    : 1; // select (drop if mismatch)
+  bool i    : 1; // invert selection and matching
+  add_f add : 2; // prepend or append
+  unsigned  : 0; // start a new byte
+  int  m    : 8; // match index
+  regex_flags(): s(0), i(0), add(no_add), m(0) { }
 };
 
 template <typename T> struct flags;
@@ -22,14 +25,11 @@ class TH1;
 
 template <> struct flags<TH1> {
   enum field { none, g, n, t, x, y, z, l, d, f };
-  enum add_f { no_add, prepend, append };
   static constexpr unsigned nfields = 9;
-  add_f add  : 2; // prepend or append
-  unsigned   : 0; // start a new byte
   field from : 4; // field being read
   field to   : 4; // field being set
   int from_i : 8; // field version, python index sign convention
-  flags(): add(no_add), from(none), to(none), from_i(-1) { }
+  flags(): from(none), to(none), from_i(-1) { }
   // operator overloading for enums doesn't work for bit fields in GCC
   // https://stackoverflow.com/q/46086830/2640636
 };
@@ -40,12 +40,14 @@ struct basic_expr: regex_flags {
   boost::regex re;
   shared_str sub;
 
-  basic_expr(const char*& str); // parsing constructor
+  basic_expr(const char*& str) { parse(str); }
   shared_str operator()(shared_str) const; // apply regex
 
 private:
-  virtual void assign_flags(const char*& str) = 0;
-  virtual void assign_exprs(const char*& str) = 0;
+  // TODO: Don't call pure virtual functions from constructor?
+  void parse(const char*& str);
+  virtual void assign_flags(const char*&) = 0;
+  virtual void assign_exprs(const char*&) = 0;
   virtual void assign_fcn(void*,void*) = 0;
 };
 
@@ -58,8 +60,8 @@ struct expr final: flags<T>, basic_expr {
   expr(const char*& str): flags<T>(), basic_expr(str) { }
 
 private:
-  void assign_flags(const char*& str) override;
-  void assign_exprs(const char*& str) override;
+  void assign_flags(const char*&) override;
+  void assign_exprs(const char*&) override;
   void assign_fcn(void*,void*) override;
 };
 
