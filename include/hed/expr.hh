@@ -15,14 +15,15 @@ struct flags {
   static constexpr unsigned nfields = 9;
   bool s     : 1; // select (drop not matching histograms)
   bool i     : 1; // invert selection and matching
+  bool m     : 1; // only this match position
   add_f add  : 2; // prepend or append
   unsigned   : 0; // start a new byte
   field from : 4; // field being read
   field to   : 4; // field being set
   int from_i : 8; // field version, python index sign convention
-  int m      : 8; // match index
-  flags(): s(0), i(0), add(no_add),
-           from(none), to(none), from_i(-1), m(0) { }
+  int m_i    : 8; // match index
+  flags(): s(0), i(0), m(0), add(no_add),
+           from(none), to(none), from_i(-1), m_i(0) { }
   // operator overloading for enums doesn't work for bit fields in GCC
   // https://stackoverflow.com/q/46086830/2640636
 };

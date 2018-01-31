@@ -84,12 +84,16 @@ int main(int argc, char* argv[]) {
       (hist_exprs_args,'r',"histogram expressions")
       (canv_exprs_args,'c',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
-      (verbose,{"-v","--verbose"}, "print expressions and strings",
-       switch_init(verbosity::all))
       (logx,"--logx")
       (logy,"--logy")
       (logz,"--logz")
       (margins,{"-m","--margins"},"canvas margins l:r:b:t")
+      (verbose,{"-v","--verbose"}, "print debug info\n"
+       "e : expressions\n"
+       "m : matched\n"
+       "n : not matched\n"
+       "default: all",
+       switch_init(verbosity::all))
       .help_suffix(
         "expression format: suffix/regex/subst/expr\n"
         "https://github.com/ivankp/root_tools2"

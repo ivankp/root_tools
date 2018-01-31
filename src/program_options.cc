@@ -288,7 +288,7 @@ void program_options::help() {
     cout << "\nannotation:\n"
       "  * required\n"
       "  - switch\n"
-      "  ? argument is optional\n"
+      "  ? value is optional\n"
       "  ^ positional\n";
   }
 

@@ -37,6 +37,10 @@ const char* consume_suffix(const char* s, flags& _fl) {
         if (fl.from || fl.add) return nullptr; // after field or +
         fl.i = true; continue;
       }
+      case 'm': {
+        if (fl.from || fl.add) return nullptr; // after field or +
+        fl.m = true; continue;
+      }
       case '+': { // concatenate
         if (fl.add) return nullptr; // multiple +
         if (!fl.from) fl.add = flags::prepend;
@@ -66,8 +70,8 @@ const char* consume_suffix(const char* s, flags& _fl) {
           return nullptr; // not a number
 
         if (!fl.from) {
-          fl.m = num;
-          if (fl.m!=num) throw error("match index ",num," out of bound");
+          fl.m_i = num;
+          if (fl.m_i!=num) throw error("match index ",num," out of bound");
         } else {
           fl.from_i = num;
           if (fl.from_i!=num) throw error("field index ",num," out of bound");
@@ -210,22 +214,28 @@ shared_str expression::operator()(shared_str str) const {
   }
 
   auto last = str->cbegin();
-  using str_t = typename shared_str::element_type;
-  boost::regex_iterator<str_t::const_iterator,str_t::value_type>
+  boost::regex_iterator<shared_str::element_type::const_iterator>
     it(last, str->cend(), re), end;
 
   if ((it!=end)==i) return { };
-  else if (i || !sub) return str;
+  if (i || !sub) return str;
 
+  static const std::decay_t<decltype(*sub)> no_sub("$&");
   auto result = make_shared_str();
   auto out = std::back_inserter(*result);
+  const int mv = std::abs(m_i);
+  const bool mn = (m_i<0);
+  int mi = 1;
   do {
-    using namespace boost::regex_constants;
-    auto& prefix = it->prefix();
+    auto& prefix = it->prefix(); // match_results
     out = std::copy(prefix.first, prefix.second, out);
-    out = it->format(out, *sub, format_all);
+    out = it->format(out,
+        (( m ? (mi==mv) != mn
+             : (mn ? mi<=mv : mi>mv) ) ? *sub : no_sub),
+        boost::regex_constants::format_all);
     last = (*it)[0].second;
     ++it;
+    ++mi;
   } while (it!=end);
   std::copy(last, str->cend(), out);
 
