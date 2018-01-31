@@ -19,12 +19,22 @@ struct canv {
   }
 
   // do not modify object refered to by group pointer
+  // TODO: make group NOT reference
   bool operator()(
     const std::vector<expression>& exprs,
-    shared_str group,
-    hist& h
+    hist& h,
+    shared_str& group
   );
 
+};
+
+template <> class applicator<canv>: public applicator<hist> {
+  canv& c;
+
+public:
+  applicator(canv& c, hist& h, shared_str& group);
+
+  bool operator()(const std::vector<expression>& exprs, int level=0);
 };
 
 #endif
