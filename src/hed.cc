@@ -78,7 +78,6 @@ int main(int argc, char* argv[]) {
 
   try {
     using namespace ivanp::po;
-    using ivanp::error;
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
@@ -100,7 +99,7 @@ int main(int argc, char* argv[]) {
     if (ofname.empty() && ifnames.size()==1) {
       const char* name = ifnames.front();
       unsigned len = strlen(name);
-      if (!len) throw error("blank input file name");
+      if (!len) throw std::runtime_error("blank input file name");
       const char* name2 = rfind(name,name+len,'/');
       len -= (name2-name);
       name = name2;
@@ -109,7 +108,7 @@ int main(int argc, char* argv[]) {
       ofname.assign(name, rm_ext ? len-5 : len);
       ofname += ".pdf";
     } else if (!ends_with(ofname,".pdf")) {
-      throw error("output file name must end in \".pdf\"");
+      throw std::runtime_error("output file name must end in \".pdf\"");
     }
 
     hist_exprs.reserve(hist_exprs_args.size());

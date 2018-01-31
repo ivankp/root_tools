@@ -78,9 +78,10 @@ public:
       const bool matched = !!result;
       const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
-      if (((verbose(verbosity::matched) && matched) ||
-           (verbose(verbosity::not_matched) && !matched))
-          && (expr.from!=expr.to || !expr.re.empty() || result!=str)
+      if (verbose) if (
+        ( (verbose(verbosity::matched) && matched) ||
+          (verbose(verbosity::not_matched) && !matched) ) &&
+        ( expr.from!=expr.to || !expr.re.empty() || result!=str )
       ) {
         using std::cout;
         using std::endl;
