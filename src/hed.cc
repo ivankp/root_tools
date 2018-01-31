@@ -8,8 +8,6 @@
 
 #include <TFile.h>
 #include <TDirectory.h>
-#include <TCanvas.h>
-// #include <TLegend.h>
 // #include <TLine.h>
 // #include <TStyle.h>
 // #include <TPaveStats.h>
@@ -20,6 +18,7 @@
 #include "shared_str.hh"
 #include "hed/expr.hh"
 #include "hed/hist.hh"
+#include "hed/canv.hh"
 #include "hed/verbosity.hh"
 
 #define TEST(var) \
@@ -151,13 +150,12 @@ int main(int argc, char* argv[]) {
   ofname += '(';
   bool first_group = true;
   unsigned group_back_cnt = group_map.size();
-  for (const auto& g : group_map) {
+  for (auto& g : group_map) {
     --group_back_cnt;
     cout << *g.first << '\n';
 
     bool first_hist = true;
-    for (const auto& _h : g.second) {
-      TH1* h = _h.h;
+    for (auto& h : g.second) {
       h->Draw(first_hist ? "" : "SAME");
       first_hist = false;
     }

@@ -2,8 +2,6 @@
 
 #include <iostream>
 #include <string>
-#include <vector>
-#include <array>
 
 #include <TDirectory.h>
 
@@ -38,101 +36,96 @@ std::string hist::init_impl(flags::field field) {
   }
 }
 
-class applicator {
-  hist& h;
-  shared_str& group;
-  // temporary strings
-  std::array<std::vector<shared_str>,flags::nfields> fields;
-  inline auto& at(flags::field f) noexcept { return fields[f-1]; }
+// template <>
+applicator<hist>::
+applicator(hist& h, shared_str& group): h(h), group(group) {
+  for (auto& field : fields) { field.emplace_back(); }
+}
 
-public:
-  applicator(hist& h, shared_str& group): h(h), group(group) {
-    for (auto& field : fields) { field.emplace_back(); }
-  }
-
+// template <>
+bool applicator<hist>::
+operator()(const std::vector<expression>& exprs, int level) {
 #define FIELD(F) std::get<flags::F-1>(fields).back()
-  bool operator()(const std::vector<expression>& exprs, int level=0) {
-    if (!level && exprs.empty()) {
-      group = h.init(flags::n);
-      return true;
-    }
-
-    bool first = true;
-    for (const expression& expr : exprs) {
-      auto& field = at(expr.from);
-      int index = expr.from_i;
-      if (index<0) index += field.size(); // make index positive
-      if (index<0 || (unsigned(index))>field.size()) // overflow check
-        throw std::runtime_error("out of range field string version index");
-
-      auto& str = field[index];
-      if (!str) { // initialize string
-        if (expr.from == flags::g) {
-          auto& name = FIELD(n);
-          if (!name) name = h.init(flags::n); // default g to n
-          str = name;
-        } else str = h.init(expr.from);
-      }
-
-      const auto result = expr(str);
-      const bool matched = !!result;
-      const bool new_str = (matched && (expr.to!=expr.from || result!=str));
-
-      if (verbose) if (
-        ( (verbose(verbosity::matched) && matched) ||
-          (verbose(verbosity::not_matched) && !matched) ) &&
-        ( expr.from!=expr.to || !expr.re.empty() || result!=str )
-      ) {
-        using std::cout;
-        using std::endl;
-
-        if (!level && first) first = false, cout << "H ";
-        else cout << "  ";
-        for (int i=0; i<level; ++i) cout << "  ";
-        cout << static_cast<const flags&>(expr);
-        if (!expr.re.empty()) {
-          cout << "\033[34m/\033[0m"
-            << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
-            << expr.re.str() << "\033[34m/\033[0m";
-          if (expr.sub) cout << *expr.sub << "\033[34m/\033[0m";
-        }
-        cout << " " << *str;
-        if (new_str) cout << " \033[34m>\033[0m " << *result;
-        cout << endl;
-      }
-
-      if (matched) {
-        if (new_str)
-          at(expr.to).emplace_back(result);
-
-        switch (expr.tag) {
-          case expression::exprs_tag: {
-            if (!operator()(expr.exprs,level+1)) return false;
-            break; }
-          case expression::hist_fcn_tag: { expr.hist_fcn(h.h); break; }
-          default: ;
-        }
-
-      } else if (expr.s) return false;
-    } // end expressions loop
-
-    // assign group
-    if (!(group = std::move(FIELD(g))))
-      if (!(group = std::move(FIELD(n)))) // default g to n
-        group = h.init(flags::n);
-
-    // assign field values to the histogram
-    if (FIELD(t)) h->SetTitle (FIELD(t)->c_str());
-    if (FIELD(x)) h->SetXTitle(FIELD(x)->c_str());
-    if (FIELD(y)) h->SetYTitle(FIELD(y)->c_str());
-    if (FIELD(z)) h->SetZTitle(FIELD(z)->c_str());
-    if (FIELD(l)) h.legend = std::move(FIELD(z));
-
+  if (!level && exprs.empty()) {
+    group = h.init(flags::n);
     return true;
   }
+
+  bool first = true;
+  for (const expression& expr : exprs) {
+    auto& field = at(expr.from);
+    int index = expr.from_i;
+    if (index<0) index += field.size(); // make index positive
+    if (index<0 || (unsigned(index))>field.size()) // overflow check
+      throw std::runtime_error("out of range field string version index");
+
+    auto& str = field[index];
+    if (!str) { // initialize string
+      if (expr.from == flags::g) {
+        auto& name = FIELD(n);
+        if (!name) name = h.init(flags::n); // default g to n
+        str = name;
+      } else str = h.init(expr.from);
+    }
+
+    const auto result = expr(str);
+    const bool matched = !!result;
+    const bool new_str = (matched && (expr.to!=expr.from || result!=str));
+
+    if (verbose) if (
+      ( (verbose(verbosity::matched) && matched) ||
+        (verbose(verbosity::not_matched) && !matched) ) &&
+      ( expr.from!=expr.to || !expr.re.empty() || result!=str )
+    ) {
+      using std::cout;
+      using std::endl;
+
+      if (!level && first) first = false, cout << "H ";
+      else cout << "  ";
+      for (int i=0; i<level; ++i) cout << "  ";
+      cout << static_cast<const flags&>(expr);
+      if (!expr.re.empty()) {
+        cout << "\033[34m/\033[0m"
+          << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
+          << expr.re.str() << "\033[34m/\033[0m";
+        if (expr.sub) cout << *expr.sub << "\033[34m/\033[0m";
+      }
+      cout << " " << *str;
+      if (new_str) cout << " \033[34m>\033[0m " << *result;
+      cout << endl;
+    }
+
+    if (matched) {
+      if (new_str)
+        at(expr.to).emplace_back(result);
+
+      switch (expr.tag) {
+        case expression::exprs_tag: {
+          if (!operator()(expr.exprs,level+1)) return false;
+          break; }
+        case expression::hist_fcn_tag: { expr.hist_fcn(h.h); break; }
+        default: ;
+      }
+
+    } else if (expr.s) return false;
+  } // end expressions loop
+
+  // assign group
+  if (!(group = std::move(FIELD(g))))
+    if (!(group = std::move(FIELD(n)))) // default g to n
+      group = h.init(flags::n);
+
+  // assign field values to the histogram
+  if (FIELD(t)) h->SetTitle (FIELD(t)->c_str());
+  if (FIELD(x)) h->SetXTitle(FIELD(x)->c_str());
+  if (FIELD(y)) h->SetYTitle(FIELD(y)->c_str());
+  if (FIELD(z)) h->SetZTitle(FIELD(z)->c_str());
+  if (FIELD(l)) h.legend = std::move(FIELD(z));
+
+  return true;
 #undef FIELD
-};
+}
 
 bool hist::operator()(const std::vector<expression>& exprs, shared_str& group) {
-  return applicator(*this,group)(exprs);
+  return applicator<hist>(*this,group)(exprs);
 }

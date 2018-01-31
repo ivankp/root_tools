@@ -1,6 +1,9 @@
 #ifndef IVANP_HED_HIST_HH
 #define IVANP_HED_HIST_HH
 
+#include <array>
+#include <vector>
+
 #include <TH1.h>
 #include <TAxis.h>
 
@@ -26,5 +29,21 @@ struct hist {
   bool operator()(const std::vector<expression>& exprs, shared_str& group);
 
 }; // end hist
+
+template <typename> class applicator;
+
+template <> class applicator<hist> {
+protected:
+  hist& h;
+  shared_str& group;
+
+  std::array<std::vector<shared_str>,flags::nfields> fields;
+  inline auto& at(flags::field f) noexcept { return fields[f-1]; }
+
+public:
+  applicator(hist& h, shared_str& group);
+
+  bool operator()(const std::vector<expression>& exprs, int level=0);
+};
 
 #endif
