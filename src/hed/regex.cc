@@ -16,7 +16,8 @@ extern bool verbose;
 
 using namespace ivanp;
 
-const char* consume_suffix(const char* s, flags& fl) {
+const char* consume_suffix(const char* s, flags& _fl) {
+  flags fl;
   flags::field f = flags::none;
   for (char c; (c=*s); ++s) {
     switch (c) {
@@ -53,7 +54,7 @@ const char* consume_suffix(const char* s, flags& fl) {
       } else return nullptr; // multiple field flags
       f = flags::none;
     } else {
-      if (c=='/'||c=='|'||c==':'||c==','||c=='{') return s;
+      if (c=='/'||c=='|'||c==':'||c==','||c=='{') break;
       else if (std::isdigit(c) || c=='-') {
         if (fl.add && *(s-1)=='+') return nullptr; // number after +
         if (fl.to) return nullptr; // index after second field
@@ -77,6 +78,7 @@ const char* consume_suffix(const char* s, flags& fl) {
       } else return nullptr; // unexpected character
     }
   } // end for
+  _fl = fl;
   return s;
 }
 
@@ -131,19 +133,19 @@ hist_regex::hist_regex(const char*& str): flags() {
     std::cout << str << std::endl;
   }
 
-  flags fl;
-  const char* suffix_end = consume_suffix(str,fl); // parse SUFFIX ==
-  if (suffix_end) static_cast<flags&>(*this) = fl;
-  else suffix_end = str;
+  // parse SUFFIX ===================================================
+  const char* suffix_end = consume_suffix(str,static_cast<flags&>(*this));
+  if (!suffix_end) suffix_end = str;
   if (!from) from = flags::g;
   if (!to) to = from;
 
-  if ((str = consume_regex(suffix_end))) { // parse REGEX ===========
+  // parse REGEX ====================================================
+  if ((str = consume_regex(suffix_end))) {
     ++suffix_end;
     if (suffix_end!=str) // do not assign regex if blank
       re.assign(suffix_end,str);
 
-    const char* subst_end = consume_subst(str); // parse SUBST ======
+    const char* subst_end = consume_subst(str); // parse SUBST
     if (subst_end) {
       sub.reset(new std::string(str+1,subst_end));
       str = subst_end;
@@ -190,7 +192,14 @@ hist_regex::hist_regex(const char*& str): flags() {
 } // ================================================================
 
 shared_str hist_regex::operator()(shared_str str) const {
-  if (re.empty()) return sub ? sub : str; // no regex
+  if (re.empty()) { // no regex
+    if (!sub) return str;
+    switch (add) {
+      case no_add  : return sub;
+      case prepend : return make_shared_str(*sub + *str);
+      case append  : return make_shared_str(*str + *sub);
+    }
+  }
 
   auto last = str->cbegin();
   using str_t = typename shared_str::element_type;
@@ -243,6 +252,8 @@ std::ostream& operator<<(std::ostream& s, const flags& f) {
   if (f.s) s << 's';
   if (f.i) s << 'i';
   s << f.from;
+  if (f.add==flags::prepend) s << '+';
   s << f.to;
+  if (f.add==flags::append) s << '+';
   return s;
 }

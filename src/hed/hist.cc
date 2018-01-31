@@ -72,19 +72,22 @@ public:
       const bool matched = !!result;
       const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
-      if (verbose) {
+      if (verbose && (expr.from!=expr.to || !expr.re.empty())) {
         using std::cout;
         using std::endl;
 
-        if (!level) {
-          if (first) first = false, cout << "H ";
-          else cout << "  ";
-        } else for (int i=0; i<level; ++i) cout << "  ";
-        cout << static_cast<const flags&>(expr) << ':'
-          << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
-          << expr.re.str() << "\033[0m " << *str;
-        if (new_str)
-          cout <<" |"<< expr.from << ":" << expr.to <<"> "<< *result;
+        if (!level && first) first = false, cout << "H ";
+        else cout << "  ";
+        for (int i=0; i<level; ++i) cout << "  ";
+        cout << static_cast<const flags&>(expr);
+        if (!expr.re.empty()) {
+          cout << "\033[34m/\033[0m"
+            << (matched ? "\033[32m" : (expr.s ? "\033[31m" : "\033[33m"))
+            << expr.re.str() << "\033[34m/\033[0m";
+          if (expr.sub) cout << *expr.sub << "\033[34m/\033[0m";
+        }
+        cout << " " << *str;
+        if (new_str) cout << " > " << *result;
         cout << endl;
       }
 
