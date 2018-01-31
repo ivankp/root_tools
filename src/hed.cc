@@ -20,6 +20,7 @@
 #include "shared_str.hh"
 #include "hed/expr.hh"
 #include "hed/hist.hh"
+#include "hed/verbosity.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
@@ -65,7 +66,7 @@ void loop(TDirectory* dir) { // LOOP
   }
 }
 
-bool verbose = false;
+verbosity verbose;
 
 int main(int argc, char* argv[]) {
   std::string ofname;
@@ -84,7 +85,8 @@ int main(int argc, char* argv[]) {
       (hist_exprs_args,'r',"histogram expressions")
       (canv_exprs_args,'c',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
-      (verbose,{"-v","--verbose"}, "print expressions and strings")
+      (verbose,{"-v","--verbose"}, "print expressions and strings",
+       switch_init(verbosity::all))
       (logx,"--logx")
       (logy,"--logy")
       (logz,"--logz")
@@ -111,7 +113,8 @@ int main(int argc, char* argv[]) {
     }
 
     hist_exprs.reserve(hist_exprs_args.size());
-    if (verbose) cout << "\033[35mExpressions:\033[0m\n";
+    if (verbose(verbosity::exprs))
+      cout << "\033[35mExpressions:\033[0m\n";
     for (const char* str : hist_exprs_args) {
       while (*str) hist_exprs.emplace_back(str);
     }

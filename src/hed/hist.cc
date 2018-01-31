@@ -7,7 +7,10 @@
 
 #include <TDirectory.h>
 
-extern bool verbose;
+#include "hed/verbosity.hh"
+
+#define TEST(var) \
+  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
 
 const char* get_file_str(const TDirectory* dir) {
   for (const TDirectory* m; ; dir = m) {
@@ -49,7 +52,10 @@ public:
 
 #define FIELD(F) std::get<flags::F-1>(fields).back()
   bool operator()(const std::vector<expression>& exprs, int level=0) {
-    if (exprs.empty()) { group = h.init(flags::n); return true; }
+    if (!level && exprs.empty()) {
+      group = h.init(flags::n);
+      return true;
+    }
 
     bool first = true;
     for (const expression& expr : exprs) {
@@ -72,7 +78,10 @@ public:
       const bool matched = !!result;
       const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
-      if (verbose && (expr.from!=expr.to || !expr.re.empty() || result!=str)) {
+      if (((verbose(verbosity::matched) && matched) ||
+           (verbose(verbosity::not_matched) && !matched))
+          && (expr.from!=expr.to || !expr.re.empty() || result!=str)
+      ) {
         using std::cout;
         using std::endl;
 
@@ -95,9 +104,13 @@ public:
         if (new_str)
           at(expr.to).emplace_back(result);
 
-        // TODO: fix when fcn and exprs are put in union
-        if (expr.fcn) expr.fcn(h.h);
-        else if (!operator()(expr.exprs,level+1)) return false;
+        switch (expr.tag) {
+          case expression::exprs_tag: {
+            if (!operator()(expr.exprs,level+1)) return false;
+            break; }
+          case expression::hist_fcn_tag: { expr.hist_fcn(h.h); break; }
+          default: ;
+        }
 
       } else if (expr.s) return false;
     } // end expressions loop

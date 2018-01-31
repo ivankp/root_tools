@@ -8,11 +8,10 @@
 
 #include "runtime_curried.hh"
 #include "error.hh"
+#include "hed/verbosity.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
-
-extern bool verbose;
 
 using namespace ivanp;
 
@@ -129,7 +128,7 @@ expression::expression(const char*& str): flags() {
   char c = *str; // consume white space
   while (c==' '||c=='\t'||c==';'||c=='\n'||c=='\r') c = *++str;
 
-  if (verbose) {
+  if (verbose(verbosity::exprs)) {
     std::cout << str << std::endl;
   }
 
@@ -174,6 +173,8 @@ expression::expression(const char*& str): flags() {
 
     std::string sub_expr(str+1,end+1);
     str = sub_expr.c_str(); // parse subexpressions
+    tag = exprs_tag;
+    new (&exprs) decltype(exprs)();
     while (*str) exprs.emplace_back(str);
 
     str = pos+1;
@@ -189,7 +190,10 @@ expression::expression(const char*& str): flags() {
     boost::string_view name(str,size_t(space-str)), args;
     if (space!=pos) ++space, args = { space,size_t(pos-space) };
 
-    fcn = runtime_curried<TH1*>::make(name,args);
+    tag = hist_fcn_tag;
+    new (&hist_fcn) decltype(hist_fcn)(
+      runtime_curried<TH1*>::make(name,args)
+    );
 
     str = pos;
   }
@@ -260,4 +264,28 @@ std::ostream& operator<<(std::ostream& s, const flags& f) {
   s << f.to;
   if (f.add==flags::append) s << '+';
   return s;
+}
+
+expression::expression(expression&& e)
+: flags(std::move(e)),
+  re(std::move(e.re)), sub(std::move(e.sub)), tag(e.tag) {
+  switch (e.tag) {
+    case none_tag: break;
+    case exprs_tag:
+      new (&exprs)decltype(exprs)(std::move(e.exprs)); break;
+    case hist_fcn_tag:
+      new (&hist_fcn)decltype(hist_fcn)(std::move(e.hist_fcn)); break;
+    case canv_fcn_tag:
+      new (&canv_fcn)decltype(canv_fcn)(std::move(e.canv_fcn)); break;
+  }
+  e.tag = none_tag;
+}
+
+expression::~expression() {
+  switch (tag) {
+    case none_tag: break;
+    case exprs_tag: exprs.~vector<expression>(); break;
+    case hist_fcn_tag: hist_fcn.~function<void(TH1*)>(); break;
+    case canv_fcn_tag: canv_fcn.~function<void(TCanvas*)>(); break;
+  }
 }

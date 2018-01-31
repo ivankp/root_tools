@@ -30,17 +30,25 @@ std::ostream& operator<<(std::ostream&, flags::field);
 std::ostream& operator<<(std::ostream&, const flags&);
 
 class TH1;
+class TCanvas;
 
 struct expression: flags {
   boost::regex re;
   shared_str sub;
 
-  std::function<void(TH1*)> fcn;
-  std::vector<expression> exprs;
-  // TODO: put fcn and exprs in a union
+  enum { none_tag, exprs_tag, hist_fcn_tag, canv_fcn_tag } tag = none_tag;
+  union {
+    std::vector<expression> exprs;
+    std::function<void(TH1*)> hist_fcn;
+    std::function<void(TCanvas*)> canv_fcn;
+  };
 
   expression(const char*& str); // parsing constructor
   shared_str operator()(shared_str) const; // apply regex
+
+  expression(const expression& e) = delete;
+  expression(expression&& e);
+  ~expression();
 };
 
 #endif
