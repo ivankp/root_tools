@@ -18,7 +18,7 @@
 #include "tkey.hh"
 #include "ordered_map.hh"
 #include "shared_str.hh"
-#include "hed/regex.hh"
+#include "hed/expr.hh"
 #include "hed/hist.hh"
 
 #define TEST(var) \
@@ -39,7 +39,7 @@ InputIt rfind(InputIt first, InputIt last, Pred&& pred) {
   ).base();
 }
 
-std::vector<hist_regex> exprs;
+std::vector<expression> hist_exprs;
 ordered_map<
   std::vector<hist>, shared_str,
   deref_pred<std::hash<std::string>>,
@@ -55,7 +55,7 @@ void loop(TDirectory* dir) { // LOOP
       hist h(read_key<TH1>(key));
       shared_str group;
 
-      if ( !h(exprs,group) ) continue;
+      if ( !h(hist_exprs,group) ) continue;
       // add hist if it passes selection
       group_map[std::move(group)].emplace_back(std::move(h));
 
@@ -70,8 +70,7 @@ bool verbose = false;
 int main(int argc, char* argv[]) {
   std::string ofname;
   std::vector<const char*> ifnames;
-  std::vector<const char*> expr_args;
-  std::vector<std::pair<const char*,const char*>> group_cmds;
+  std::vector<const char*> hist_exprs_args, canv_exprs_args;
   bool logx = false, logy = false, logz = false;
   bool sort_groups = false;
   std::array<float,4> margins {0.1,0.1,0.1,0.1};
@@ -82,16 +81,18 @@ int main(int argc, char* argv[]) {
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
-      (expr_args,'r',"suffix/regex/subst/expr")
-      (group_cmds,'g',"group commands")
+      (hist_exprs_args,'r',"histogram expressions")
+      (canv_exprs_args,'c',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
       (verbose,{"-v","--verbose"}, "print expressions and strings")
       (logx,"--logx")
       (logy,"--logy")
       (logz,"--logz")
       (margins,{"-m","--margins"},"canvas margins l:r:b:t")
-      .help_suffix("https://github.com/ivankp/root_tools2")
-      .parse(argc,argv,true)) return 0;
+      .help_suffix(
+        "expression format: suffix/regex/subst/expr\n"
+        "https://github.com/ivankp/root_tools2"
+      ).parse(argc,argv,true)) return 0;
 
     // default ofname derived from ifname
     if (ofname.empty() && ifnames.size()==1) {
@@ -109,10 +110,10 @@ int main(int argc, char* argv[]) {
       throw error("output file name must end in \".pdf\"");
     }
 
-    exprs.reserve(expr_args.size());
+    hist_exprs.reserve(hist_exprs_args.size());
     if (verbose) cout << "\033[35mExpressions:\033[0m\n";
-    for (const char* str : expr_args) {
-      while (*str) exprs.emplace_back(str);
+    for (const char* str : hist_exprs_args) {
+      while (*str) hist_exprs.emplace_back(str);
     }
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;

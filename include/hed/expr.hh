@@ -1,5 +1,5 @@
-#ifndef IVANP_HED_REGEX_HH
-#define IVANP_HED_REGEX_HH
+#ifndef IVANP_HED_EXPRESSION_HH
+#define IVANP_HED_EXPRESSION_HH
 
 #include <vector>
 #include <functional>
@@ -31,15 +31,15 @@ std::ostream& operator<<(std::ostream&, const flags&);
 
 class TH1;
 
-struct hist_regex: flags {
+struct expression: flags {
   boost::regex re;
   shared_str sub;
 
   std::function<void(TH1*)> fcn;
-  std::vector<hist_regex> exprs;
+  std::vector<expression> exprs;
   // TODO: put fcn and exprs in a union
 
-  hist_regex(const char*& str); // parsing constructor
+  expression(const char*& str); // parsing constructor
   shared_str operator()(shared_str) const; // apply regex
 };
 

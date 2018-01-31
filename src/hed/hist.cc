@@ -1,11 +1,11 @@
+#include "hed/hist.hh"
+
 #include <iostream>
 #include <string>
 #include <vector>
 #include <array>
 
 #include <TDirectory.h>
-
-#include "hed/hist.hh"
 
 extern bool verbose;
 
@@ -48,11 +48,11 @@ public:
   }
 
 #define FIELD(F) std::get<flags::F-1>(fields).back()
-  bool operator()(const std::vector<hist_regex>& exprs, int level=0) {
+  bool operator()(const std::vector<expression>& exprs, int level=0) {
     if (exprs.empty()) { group = h.init(flags::n); return true; }
 
     bool first = true;
-    for (const hist_regex& expr : exprs) {
+    for (const expression& expr : exprs) {
       auto& field = at(expr.from);
       int index = expr.from_i;
       if (index<0) index += field.size(); // make index positive
@@ -72,7 +72,7 @@ public:
       const bool matched = !!result;
       const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
-      if (verbose && (expr.from!=expr.to || !expr.re.empty())) {
+      if (verbose && (expr.from!=expr.to || !expr.re.empty() || result!=str)) {
         using std::cout;
         using std::endl;
 
@@ -87,7 +87,7 @@ public:
           if (expr.sub) cout << *expr.sub << "\033[34m/\033[0m";
         }
         cout << " " << *str;
-        if (new_str) cout << " > " << *result;
+        if (new_str) cout << " \033[34m>\033[0m " << *result;
         cout << endl;
       }
 
@@ -119,6 +119,6 @@ public:
 #undef FIELD
 };
 
-bool hist::operator()(const std::vector<hist_regex>& exprs, shared_str& group) {
+bool hist::operator()(const std::vector<expression>& exprs, shared_str& group) {
   return applicator(*this,group)(exprs);
 }

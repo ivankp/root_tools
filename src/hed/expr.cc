@@ -1,4 +1,4 @@
-#include "hed/regex.hh"
+#include "hed/expr.hh"
 
 #include <iostream>
 #include <algorithm>
@@ -122,7 +122,7 @@ const char* seek_matching_brace(const char* s) noexcept {
   return c ? s : nullptr;
 }
 
-hist_regex::hist_regex(const char*& str): flags() {
+expression::expression(const char*& str): flags() {
   if (!str) throw std::runtime_error("null expression");
   if (*str=='\0') return;
 
@@ -142,10 +142,11 @@ hist_regex::hist_regex(const char*& str): flags() {
   // parse REGEX ====================================================
   if ((str = consume_regex(suffix_end))) {
     const char* subst_end = consume_subst(str); // parse SUBST
+    // TODO: decide what to do with escapes in subst
     if (subst_end) sub = make_shared_str(str+1,subst_end);
 
     ++suffix_end;
-    if (suffix_end!=str) { // set regex
+    if (suffix_end!=str) { // regex not blank
       using namespace boost::regex_constants;
       syntax_option_type flags = optimize;
       if (!subst_end) flags |= nosubs;
@@ -194,7 +195,7 @@ hist_regex::hist_regex(const char*& str): flags() {
   }
 } // ================================================================
 
-shared_str hist_regex::operator()(shared_str str) const {
+shared_str expression::operator()(shared_str str) const {
   if (re.empty()) { // no regex
     if (!sub) return str;
     switch (add) {
