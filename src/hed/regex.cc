@@ -141,15 +141,18 @@ hist_regex::hist_regex(const char*& str): flags() {
 
   // parse REGEX ====================================================
   if ((str = consume_regex(suffix_end))) {
-    ++suffix_end;
-    if (suffix_end!=str) // do not assign regex if blank
-      re.assign(suffix_end,str);
-
     const char* subst_end = consume_subst(str); // parse SUBST
-    if (subst_end) {
-      sub.reset(new std::string(str+1,subst_end));
-      str = subst_end;
+    if (subst_end) sub = make_shared_str(str+1,subst_end);
+
+    ++suffix_end;
+    if (suffix_end!=str) { // set regex
+      using namespace boost::regex_constants;
+      syntax_option_type flags = optimize;
+      if (!subst_end) flags |= nosubs;
+      re.assign(suffix_end,str,flags);
     }
+
+    if (subst_end) str = subst_end;
     ++str; // skip past closing delimeter
   } else str = suffix_end;
 
