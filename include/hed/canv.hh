@@ -18,8 +18,6 @@ struct canv {
     delete l;
   }
 
-  // do not modify object refered to by group pointer
-  // TODO: make group NOT reference
   bool operator()(
     const std::vector<expression>& exprs,
     hist& h,

@@ -152,7 +152,9 @@ int main(int argc, char* argv[]) {
   unsigned group_back_cnt = group_map.size();
   for (auto& g : group_map) {
     --group_back_cnt;
-    cout << *g.first << '\n';
+    shared_str group = g.first; // need to copy pointer here
+                                // because canv can make new string
+    cout << *group << '\n';
 
     bool first_hist = true;
     for (auto& h : g.second) {
@@ -161,7 +163,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (!group_back_cnt) ofname += ')';
-    canv.Print(ofname.c_str(),("Title:"+*g.first).c_str());
+    canv.Print(ofname.c_str(),("Title:"+*group).c_str());
     if (first_group) ofname.pop_back(), first_group = false;
   }
 
