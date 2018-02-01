@@ -80,7 +80,7 @@ operator()(const std::vector<expression>& exprs, int level) {
       using std::cout;
       using std::endl;
 
-      if (!level && first) first = false, cout << "H ";
+      if (!level && first) first = false, cout << "➜ ";
       else cout << "  ";
       for (int i=0; i<level; ++i) cout << "  ";
       cout << static_cast<const flags&>(expr);

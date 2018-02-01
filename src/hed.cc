@@ -21,6 +21,8 @@
 #include "hed/hist.hh"
 #include "hed/canv.hh"
 #include "hed/verbosity.hh"
+#include "transform_iterator.hh"
+#include "hist_range.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
@@ -173,13 +175,20 @@ int main(int argc, char* argv[]) {
     --group_back_cnt;
     shared_str group = g.first; // need to copy pointer here
                                 // because canv can make new string
-    cout << *group << '\n';
+    cout <<"\033[36m"<< *group << "\033[0m\n";
     if (!canvas(canv_exprs,g.second.front(),group)) continue;
 
-    bool first_hist = true;
-    for (auto& h : g.second) {
-      h->Draw(first_hist ? "" : "SAME");
-      first_hist = false;
+    TH1* h = g.second.front().h;
+
+    const auto range_y = hists_range_y(
+      make_transform_iterator(g.second.begin(),[](auto& h){ return h.h; }),
+      g.second.end(),
+      canvas->GetLogy());
+
+    h->GetYaxis()->SetRangeUser(range_y.first,range_y.second);
+
+    for (auto& _h : g.second) {
+      _h->Draw(_h.h==h ? "" : "SAME");
     }
 
     if (!group_back_cnt) {
