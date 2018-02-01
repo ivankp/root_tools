@@ -46,7 +46,7 @@ applicator(hist& h, shared_str& group): h(h), group(group) {
 bool applicator<hist>::
 operator()(const std::vector<expression>& exprs, int level) {
 #define FIELD(F) std::get<flags::F-1>(fields).back()
-  if (!group && exprs.empty()) {
+  if (!level && !group && exprs.empty()) {
     group = h.init(flags::n);
     return true;
   }
@@ -104,11 +104,13 @@ operator()(const std::vector<expression>& exprs, int level) {
     } else if (expr.s) return false;
   } // end expressions loop
 
+  if (level) return true;
+
   // assign group
-  if (!group) // no group to start with
-    if (!(group = std::move(FIELD(g))))
-      if (!(group = std::move(FIELD(n)))) // default g to n
-        group = h.init(flags::n);
+  // TODO: decide what to do if can expr changed group
+  if (!(group = std::move(FIELD(g))))
+    if (!(group = std::move(FIELD(n)))) // default g to n
+      group = h.init(flags::n);
 
   // assign field values to the histogram
   if (FIELD(t)) h->SetTitle (FIELD(t)->c_str());

@@ -161,11 +161,6 @@ int main(int argc, char* argv[]) {
 
   // Draw histograms ************************************************
   canv canvas;
-  // if (logx) canv.SetLogx();
-  // if (logy) canv.SetLogy();
-  // if (logz) canv.SetLogz();
-  // canv.SetMargin(get<0>(margins),get<1>(margins),
-  //                get<2>(margins),get<3>(margins));
 
   cout << "\033[34mOutput file:\033[0m " << ofname << endl;
   unsigned group_back_cnt = group_map.size();
@@ -179,16 +174,35 @@ int main(int argc, char* argv[]) {
     if (!canvas(canv_exprs,g.second.front(),group)) continue;
 
     TH1* h = g.second.front().h;
+    h->SetStats(false);
 
-    const auto range_y = hists_range_y(
-      make_transform_iterator(g.second.begin(),[](auto& h){ return h.h; }),
-      g.second.end(),
-      canvas->GetLogy());
+    const bool ymin_set = (h->GetMinimumStored()!=-1111),
+               ymax_set = (h->GetMaximumStored()!=-1111);
 
-    h->GetYaxis()->SetRangeUser(range_y.first,range_y.second);
+    if (!ymin_set || !ymax_set) {
+      const auto range_y = hists_range_y(
+        make_transform_iterator(g.second.begin(),[](auto& h){ return h.h; }),
+        g.second.end(),
+        canvas->GetLogy());
+
+      if (!ymin_set) h->SetMinimum(range_y.first);
+      if (!ymax_set) h->SetMaximum(range_y.second);
+    }
+
+    // h->GetYaxis()->SetRangeUser(range_y.first,range_y.second);
 
     for (auto& _h : g.second) {
       _h->Draw(_h.h==h ? "" : "SAME");
+    }
+
+    TLegend *leg = nullptr;
+    if (g.second.size()>1 && g.second.front().legend) {
+      leg = new TLegend(0.72,0.9-g.second.size()*0.04,0.9,0.9);
+
+      leg->SetFillColorAlpha(0,0.65);
+      for (const auto& h : g.second)
+        leg->AddEntry(h.h, h.legend->c_str());
+      leg->Draw();
     }
 
     if (!group_back_cnt) {
@@ -197,6 +211,7 @@ int main(int argc, char* argv[]) {
     }
     canvas->Print(ofname.c_str(),("Title:"+*group).c_str());
     if (first_group) ofname.pop_back(), first_group = false;
+    delete leg;
   }
 
 }

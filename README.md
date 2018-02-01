@@ -1,4 +1,4 @@
-# `rxplot`
+# `hed`
 
 ## Regular expressions syntax
 
@@ -31,9 +31,8 @@ Flags are single-character modifiers used in the first expression block.
 Flags in the first group modify the outcome of regex matching.
 
 * `s` - select. Retain only matching histograms.
-* `w` - replace whole string rather than a regex match.
 * `i` - invert matching. String replacement, selection, and commands apply
-        if regex didn't match. `i` with third block implies `w`.
+        if regex didn't match.
 
 Flags in the second group specify which field (string) to modify.
 

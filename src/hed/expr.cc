@@ -207,11 +207,12 @@ expression::expression(const char*& str): flags() {
           runtime_curried<TH1*>::make(name,args)
         );
         tag = hist_fcn_tag;
-      } catch (...) { }
-      tag = canv_fcn_tag;
-      new (&canv_fcn) decltype(canv_fcn)(
-        runtime_curried<TCanvas*>::make(name,args)
-      );
+      } catch (...) {
+        tag = canv_fcn_tag;
+        new (&canv_fcn) decltype(canv_fcn)(
+          runtime_curried<TCanvas*>::make(name,args)
+        );
+      }
     }
 
     str = pos;
