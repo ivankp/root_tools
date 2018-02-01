@@ -50,6 +50,8 @@ struct expression: flags {
   expression(const expression& e) = delete;
   expression(expression&& e);
   ~expression();
+
+  static bool parse_canv;
 };
 
 #endif

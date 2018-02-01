@@ -46,7 +46,7 @@ applicator(hist& h, shared_str& group): h(h), group(group) {
 bool applicator<hist>::
 operator()(const std::vector<expression>& exprs, int level) {
 #define FIELD(F) std::get<flags::F-1>(fields).back()
-  if (!level && exprs.empty()) {
+  if (!group && exprs.empty()) {
     group = h.init(flags::n);
     return true;
   }
@@ -99,31 +99,35 @@ operator()(const std::vector<expression>& exprs, int level) {
       if (new_str)
         at(expr.to).emplace_back(result);
 
-      switch (expr.tag) {
-        case expression::exprs_tag: {
-          if (!operator()(expr.exprs,level+1)) return false;
-          break; }
-        case expression::hist_fcn_tag: { expr.hist_fcn(h.h); break; }
-        default: ;
-      }
+      if (!this->hook(expr,level+1)) return false; // virtual call
 
     } else if (expr.s) return false;
   } // end expressions loop
 
   // assign group
-  if (!(group = std::move(FIELD(g))))
-    if (!(group = std::move(FIELD(n)))) // default g to n
-      group = h.init(flags::n);
+  if (!group) // no group to start with
+    if (!(group = std::move(FIELD(g))))
+      if (!(group = std::move(FIELD(n)))) // default g to n
+        group = h.init(flags::n);
 
   // assign field values to the histogram
   if (FIELD(t)) h->SetTitle (FIELD(t)->c_str());
   if (FIELD(x)) h->SetXTitle(FIELD(x)->c_str());
   if (FIELD(y)) h->SetYTitle(FIELD(y)->c_str());
   if (FIELD(z)) h->SetZTitle(FIELD(z)->c_str());
-  if (FIELD(l)) h.legend = std::move(FIELD(z));
+  if (FIELD(l)) h.legend = std::move(FIELD(l));
 
   return true;
 #undef FIELD
+}
+
+bool applicator<hist>::hook(const expression& expr, int level) {
+  switch (expr.tag) {
+    case expression::exprs_tag: return operator()(expr.exprs,level);
+    case expression::hist_fcn_tag: expr.hist_fcn(h.h); break;
+    default: ;
+  }
+  return true;
 }
 
 bool hist::operator()(const std::vector<expression>& exprs, shared_str& group) {

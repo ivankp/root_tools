@@ -15,6 +15,8 @@
 
 using namespace ivanp;
 
+bool expression::parse_canv = false;
+
 const char* consume_suffix(const char* s, flags& _fl) {
   flags fl;
   flags::field f = flags::none;
@@ -194,10 +196,23 @@ expression::expression(const char*& str): flags() {
     boost::string_view name(str,size_t(space-str)), args;
     if (space!=pos) ++space, args = { space,size_t(pos-space) };
 
-    tag = hist_fcn_tag;
-    new (&hist_fcn) decltype(hist_fcn)(
-      runtime_curried<TH1*>::make(name,args)
-    );
+    if (!parse_canv) {
+      tag = hist_fcn_tag;
+      new (&hist_fcn) decltype(hist_fcn)(
+        runtime_curried<TH1*>::make(name,args)
+      );
+    } else {
+      try {
+        new (&hist_fcn) decltype(hist_fcn)(
+          runtime_curried<TH1*>::make(name,args)
+        );
+        tag = hist_fcn_tag;
+      } catch (...) { }
+      tag = canv_fcn_tag;
+      new (&canv_fcn) decltype(canv_fcn)(
+        runtime_curried<TCanvas*>::make(name,args)
+      );
+    }
 
     str = pos;
   }

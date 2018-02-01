@@ -40,6 +40,8 @@ protected:
   std::array<std::vector<shared_str>,flags::nfields> fields;
   inline auto& at(flags::field f) noexcept { return fields[f-1]; }
 
+  virtual bool hook(const expression& expr, int level);
+
 public:
   applicator(hist& h, shared_str& group);
 

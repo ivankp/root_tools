@@ -5,6 +5,7 @@
 #include <vector>
 #include <stdexcept>
 #include <memory>
+#include <chrono>
 
 #include <TFile.h>
 #include <TDirectory.h>
@@ -39,7 +40,7 @@ InputIt rfind(InputIt first, InputIt last, Pred&& pred) {
   ).base();
 }
 
-std::vector<expression> hist_exprs;
+std::vector<expression> hist_exprs, canv_exprs;
 ordered_map<
   std::vector<hist>, shared_str,
   deref_pred<std::hash<std::string>>,
@@ -71,22 +72,19 @@ int main(int argc, char* argv[]) {
   std::string ofname;
   std::vector<const char*> ifnames;
   std::vector<const char*> hist_exprs_args, canv_exprs_args;
-  bool logx = false, logy = false, logz = false;
   bool sort_groups = false;
-  std::array<float,4> margins {0.1,0.1,0.1,0.1};
+  // std::array<float,4> margins {0.1,0.1,0.1,0.1};
 
   try {
     using namespace ivanp::po;
+    const auto start = std::chrono::steady_clock::now();
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
       (hist_exprs_args,'r',"histogram expressions")
       (canv_exprs_args,'c',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
-      (logx,"--logx")
-      (logy,"--logy")
-      (logz,"--logz")
-      (margins,{"-m","--margins"},"canvas margins l:r:b:t")
+      // (margins,{"-m","--margins"},"canvas margins l:r:b:t")
       (verbose,{"-v","--verbose"}, "print debug info\n"
        "e : expressions\n"
        "m : matched\n"
@@ -114,11 +112,32 @@ int main(int argc, char* argv[]) {
       throw std::runtime_error("output file name must end in \".pdf\"");
     }
 
-    hist_exprs.reserve(hist_exprs_args.size());
-    if (verbose(verbosity::exprs))
-      cout << "\033[35mExpressions:\033[0m\n";
-    for (const char* str : hist_exprs_args) {
-      while (*str) hist_exprs.emplace_back(str);
+    if (!hist_exprs_args.empty()) {
+      expression::parse_canv = false;
+      hist_exprs.reserve(hist_exprs_args.size());
+      if (verbose(verbosity::exprs))
+        cout << "\033[35mHist expressions:\033[0m\n";
+      for (const char* str : hist_exprs_args) {
+        while (*str) hist_exprs.emplace_back(str);
+      }
+    }
+
+    if (!canv_exprs_args.empty()) {
+      expression::parse_canv = true;
+      canv_exprs.reserve(canv_exprs_args.size());
+      if (verbose(verbosity::exprs))
+        cout << "\033[35mCanv expressions:\033[0m\n";
+      for (const char* str : canv_exprs_args) {
+        while (*str) canv_exprs.emplace_back(str);
+      }
+    }
+
+    if (verbose) {
+      cout << "\033[35mParsing time:\033[0m "
+           << std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+              ).count()
+           << " μs" << endl;
     }
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;
@@ -139,22 +158,23 @@ int main(int argc, char* argv[]) {
   if (sort_groups) group_map.sort();
 
   // Draw histograms ************************************************
-  TCanvas canv;
-  if (logx) canv.SetLogx();
-  if (logy) canv.SetLogy();
-  if (logz) canv.SetLogz();
-  canv.SetMargin(get<0>(margins),get<1>(margins),
-                 get<2>(margins),get<3>(margins));
+  canv canvas;
+  // if (logx) canv.SetLogx();
+  // if (logy) canv.SetLogy();
+  // if (logz) canv.SetLogz();
+  // canv.SetMargin(get<0>(margins),get<1>(margins),
+  //                get<2>(margins),get<3>(margins));
 
-  cout << "\033[34mOutput file:\033[0m " << ofname <<'\n'<< endl;
-  ofname += '(';
-  bool first_group = true;
+  cout << "\033[34mOutput file:\033[0m " << ofname << endl;
   unsigned group_back_cnt = group_map.size();
+  if (group_back_cnt > 1) ofname += '(';
+  bool first_group = true;
   for (auto& g : group_map) {
     --group_back_cnt;
     shared_str group = g.first; // need to copy pointer here
                                 // because canv can make new string
     cout << *group << '\n';
+    if (!canvas(canv_exprs,g.second.front(),group)) continue;
 
     bool first_hist = true;
     for (auto& h : g.second) {
@@ -162,8 +182,11 @@ int main(int argc, char* argv[]) {
       first_hist = false;
     }
 
-    if (!group_back_cnt) ofname += ')';
-    canv.Print(ofname.c_str(),("Title:"+*group).c_str());
+    if (!group_back_cnt) {
+      if (first_group) first_group = false;
+      else ofname += ')';
+    }
+    canvas->Print(ofname.c_str(),("Title:"+*group).c_str());
     if (first_group) ofname.pop_back(), first_group = false;
   }
 

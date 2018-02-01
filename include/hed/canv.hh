@@ -18,6 +18,9 @@ struct canv {
     delete l;
   }
 
+  inline TCanvas& operator* () noexcept { return *c; }
+  inline TCanvas* operator->() noexcept { return  c; }
+
   bool operator()(
     const std::vector<expression>& exprs,
     hist& h,
@@ -29,10 +32,10 @@ struct canv {
 template <> class applicator<canv>: public applicator<hist> {
   canv& c;
 
+  virtual bool hook(const expression& expr, int level);
+
 public:
   applicator(canv& c, hist& h, shared_str& group);
-
-  bool operator()(const std::vector<expression>& exprs, int level=0);
 };
 
 #endif
