@@ -42,6 +42,8 @@ protected:
 
   virtual bool hook(const expression& expr, int level);
 
+  shared_str& init_field(flags::field q, int i);
+
 public:
   applicator(hist& h, shared_str& group);
 

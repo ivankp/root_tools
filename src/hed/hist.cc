@@ -12,7 +12,7 @@
 
 const char* get_file_str(const TDirectory* dir) {
   for (const TDirectory* m; ; dir = m) {
-    if ((m = dir->GetMotherDir())) break;
+    if (!(m = dir->GetMotherDir())) break;
   }
   return dir->GetName();
 }
@@ -36,16 +36,27 @@ std::string hist::init_impl(flags::field field) {
   }
 }
 
-// template <>
 applicator<hist>::
 applicator(hist& h, shared_str& group): h(h), group(group) {
   for (auto& field : fields) { field.emplace_back(); }
 }
 
-// template <>
+#define FIELD(F) std::get<flags::F-1>(fields).back()
+
+shared_str& applicator<hist>::init_field(flags::field q, int i) {
+  shared_str& str = at(q)[i];
+  if (!str) { // initialize string
+    if (q == flags::g) {
+      auto& name = FIELD(n);
+      if (!name) name = h.init(flags::n); // default g to n
+      str = name;
+    } else str = h.init(q);
+  }
+  return str;
+}
+
 bool applicator<hist>::
 operator()(const std::vector<expression>& exprs, int level) {
-#define FIELD(F) std::get<flags::F-1>(fields).back()
   if (!level && !group && exprs.empty()) {
     group = h.init(flags::n);
     return true;
@@ -59,17 +70,24 @@ operator()(const std::vector<expression>& exprs, int level) {
     if (index<0 || (unsigned(index))>field.size()) // overflow check
       throw std::runtime_error("out of range field string version index");
 
-    auto& str = field[index];
-    if (!str) { // initialize string
-      if (expr.from == flags::g) {
-        auto& name = FIELD(n);
-        if (!name) name = h.init(flags::n); // default g to n
-        str = name;
-      } else str = h.init(expr.from);
+    auto& str = init_field(expr.from,index);
+    const auto to_i = at(expr.to).size()-1;
+    if (expr.from!=expr.to && expr.add) init_field(expr.to,to_i);
+    const auto& to = at(expr.to)[to_i];
+
+    auto result = expr(str);
+    const bool matched = !!result;
+
+    if (matched) {
+      switch (expr.add) {
+        case flags::no_add: break;
+        case flags::prepend:
+          result = make_shared_str(*result + *to); break;
+        case flags::append:
+          result = make_shared_str(*to + *result); break;
+      }
     }
 
-    const auto result = expr(str);
-    const bool matched = !!result;
     const bool new_str = (matched && (expr.to!=expr.from || result!=str));
 
     if (verbose) if (
@@ -120,8 +138,9 @@ operator()(const std::vector<expression>& exprs, int level) {
   if (FIELD(l)) h.legend = std::move(FIELD(l));
 
   return true;
-#undef FIELD
 }
+
+#undef FIELD
 
 bool applicator<hist>::hook(const expression& expr, int level) {
   switch (expr.tag) {

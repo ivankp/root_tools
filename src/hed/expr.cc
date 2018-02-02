@@ -220,14 +220,7 @@ expression::expression(const char*& str): flags() {
 } // ================================================================
 
 shared_str expression::operator()(shared_str str) const {
-  if (re.empty()) { // no regex
-    if (!sub) return str;
-    switch (add) {
-      case no_add  : return sub;
-      case prepend : return make_shared_str(*sub + *str);
-      case append  : return make_shared_str(*str + *sub);
-    }
-  }
+  if (re.empty()) return sub ? sub : str; // no regex
 
   auto last = str->cbegin();
   boost::regex_iterator<shared_str::element_type::const_iterator>
@@ -254,12 +247,6 @@ shared_str expression::operator()(shared_str str) const {
     ++mi;
   } while (it!=end);
   std::copy(last, str->cend(), out);
-
-  switch (add) {
-    case no_add  : break;
-    case prepend : result->append(*str); break;
-    case append  : result->assign(*str + *result); break;
-  }
 
   return result;
 }

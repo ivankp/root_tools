@@ -23,6 +23,7 @@
 #include "hed/verbosity.hh"
 #include "transform_iterator.hh"
 #include "hist_range.hh"
+#include "ring.hh"
 
 #define TEST(var) \
   std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]) {
   std::vector<const char*> ifnames;
   std::vector<const char*> hist_exprs_args, canv_exprs_args;
   bool sort_groups = false;
-  // std::array<float,4> margins {0.1,0.1,0.1,0.1};
+  ring<std::vector<Color_t>> colors;
 
   try {
     using namespace ivanp::po;
@@ -84,9 +85,9 @@ int main(int argc, char* argv[]) {
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
       (hist_exprs_args,'r',"histogram expressions")
-      (canv_exprs_args,'c',"canvas expressions")
+      (canv_exprs_args,'g',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
-      // (margins,{"-m","--margins"},"canvas margins l:r:b:t")
+      (*colors,{"-c","--colors"},"color palette")
       (verbose,{"-v","--verbose"}, "print debug info\n"
        "e : expressions\n"
        "m : matched\n"
@@ -95,6 +96,9 @@ int main(int argc, char* argv[]) {
        switch_init(verbosity::all))
       .help_suffix(
         "expression format: suffix/regex/subst/expr\n"
+        "good palettes:\n"
+        "\t602 46 8 90 52 41\n"
+        "\t56 61 65 71 75 81 85 91 95 100\n"
         "https://github.com/ivankp/root_tools2"
       ).parse(argc,argv,true)) return 0;
 
@@ -171,13 +175,18 @@ int main(int argc, char* argv[]) {
     shared_str group = g.first; // need to copy pointer here
                                 // because canv can make new string
     cout <<"\033[36m"<< *group << "\033[0m\n";
+
+    canvas->SetLogx(0);
+    canvas->SetLogy(0);
+    canvas->SetLogz(0);
+
     if (!canvas(canv_exprs,g.second.front(),group)) continue;
 
-    TH1* h = g.second.front().h;
-    h->SetStats(false);
+    TH1* _h = g.second.front().h;
+    _h->SetStats(false);
 
-    const bool ymin_set = (h->GetMinimumStored()!=-1111),
-               ymax_set = (h->GetMaximumStored()!=-1111);
+    const bool ymin_set = (_h->GetMinimumStored()!=-1111),
+               ymax_set = (_h->GetMaximumStored()!=-1111);
 
     if (!ymin_set || !ymax_set) {
       const auto range_y = hists_range_y(
@@ -185,14 +194,24 @@ int main(int argc, char* argv[]) {
         g.second.end(),
         canvas->GetLogy());
 
-      if (!ymin_set) h->SetMinimum(range_y.first);
-      if (!ymax_set) h->SetMaximum(range_y.second);
+      if (!ymin_set) _h->SetMinimum(range_y.first);
+      if (!ymax_set) _h->SetMaximum(range_y.second);
     }
 
     // h->GetYaxis()->SetRangeUser(range_y.first,range_y.second);
 
-    for (auto& _h : g.second) {
-      _h->Draw(_h.h==h ? "" : "SAME");
+    unsigned i = 0;
+    for (auto& h : g.second) {
+      // TODO: make these overridable
+      if (colors) {
+        const auto color = colors[i];
+        h->SetLineColor(color);
+        h->SetMarkerColor(color);
+      }
+      h->SetLineWidth(2);
+      h->SetTitleOffset(1.1,"Y");
+      h->Draw(h.h==_h ? "" : "SAME");
+      ++i;
     }
 
     TLegend *leg = nullptr;
