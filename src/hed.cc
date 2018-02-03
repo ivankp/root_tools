@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
         "expression format: suffix/regex/subst/expr\n"
         "good palettes:\n"
         "\t602 46 8 90 52 41\n"
-        "\t56 61 65 71 75 81 85 91 95 100\n"
+        "\t56 61 65 71 75 81 85 91 95 99\n"
         "https://github.com/ivankp/root_tools2"
       ).parse(argc,argv,true)) return 0;
 

@@ -59,7 +59,7 @@ const char* consume_suffix(const char* s, flags& _fl) {
       } else return nullptr; // multiple field flags
       f = flags::none;
     } else {
-      if (c=='/'||c=='|'||c==':'||c==','||c=='{') break;
+      if (c=='/'||c=='|'||c==':'||c==','||c==';'||c=='{') break;
       else if (std::isdigit(c) || c=='-') {
         if (fl.add && *(s-1)=='+') return nullptr; // number after +
         if (fl.to) return nullptr; // index after second field
