@@ -3,6 +3,8 @@
 #include <TH1.h>
 #include <TAxis.h>
 #include <TF1.h>
+#include <TStyle.h>
+#include <TPaveStats.h>
 
 #include "function_map.hh"
 
@@ -10,7 +12,7 @@ using base = function_map<TH1*>;
 
 #include "hed/fcn_def_macros.hh"
 
-namespace {
+namespace fcn_def {
 
 template <typename F>
 void for_axes(const std::string& arg, TH1* h, F f) {
@@ -75,6 +77,35 @@ F0(label_font,ESC(std::string,Style_t)) {
   for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){ a->SetLabelFont(arg); });
 }
 
+F(noexp,ESC(1,std::string,bool),true) {
+  for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){ a->SetNoExponent(arg); });
+}
+F(mlog,ESC(1,std::string,bool),true) {
+  for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){ a->SetMoreLogLabels(arg); });
+}
+
+F0(range,ESC(std::string,double,double)) {
+  for_axes(arg<0>(),a,[min=arg<1>(),max=arg<2>()](TAxis* a){
+    a->SetRangeUser(min,max);
+  });
+}
+
+F(stats,ESC(2,std::string,Float_t),ESC({{}},0.65)) {
+  if (arg<0>().empty()) {
+    a->SetStats(false);
+  } else {
+    gStyle->SetOptStat(arg<0>().c_str());
+    a->SetStats(true);
+    auto* stat_box = static_cast<TPaveStats*>(a->FindObject("stats"));
+    if (stat_box) stat_box->SetFillColorAlpha(0,arg<1>());
+  }
+}
+
+F(opt,ESC(1,std::string),{}) { a->SetOption(arg<0>().c_str()); }
+F(val_fmt,ESC(1,std::string),{}) {
+  gStyle->SetPaintTextFormat(arg<0>().c_str());
+}
+
 } // ----------------------------------------------------------------
 
 MAP {
@@ -82,6 +113,7 @@ MAP {
   ADD(scale),
   ADD(min),
   ADD(max),
+  ADD(range),
   ADD(line_color),
   ADD(line_width),
   ADD(line_style),
@@ -96,9 +128,14 @@ MAP {
   ADD(label_size),
   ADD(label_offset),
   ADD(label_font),
+  ADD(noexp),
+  ADD(mlog),
   ADD(rebin),
   ADD(setbin),
   ADD(seterr),
+  ADD(opt),
+  ADD(stats),
+  ADD(val_fmt),
   ADD(eval)
 };
 

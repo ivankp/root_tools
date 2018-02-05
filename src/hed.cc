@@ -9,9 +9,6 @@
 
 #include <TFile.h>
 #include <TDirectory.h>
-// #include <TLine.h>
-// #include <TStyle.h>
-// #include <TPaveStats.h>
 
 #include "program_options.hh"
 #include "tkey.hh"
@@ -180,10 +177,10 @@ int main(int argc, char* argv[]) {
     canvas->SetLogy(0);
     canvas->SetLogz(0);
 
-    if (!canvas(canv_exprs,g.second.front(),group)) continue;
-
     TH1* _h = g.second.front().h;
     _h->SetStats(false);
+
+    if (!canvas(canv_exprs,g.second.front(),group)) continue;
 
     const bool ymin_set = (_h->GetMinimumStored()!=-1111),
                ymax_set = (_h->GetMaximumStored()!=-1111);
@@ -210,7 +207,7 @@ int main(int argc, char* argv[]) {
       }
       h->SetLineWidth(2);
       h->SetTitleOffset(1.1,"Y");
-      h->Draw(h.h==_h ? "" : "SAME");
+      h->Draw(cat(h->GetOption(),h.h==_h ? "" : "SAME").c_str());
       ++i;
     }
 

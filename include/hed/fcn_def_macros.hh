@@ -19,6 +19,6 @@
 
 #define MAP template <> typename base::map_type base::all
 
-#define ADD(NAME) { #NAME, &fcn_factory<NAME> }
+#define ADD(NAME) { #NAME, &fcn_factory<fcn_def::NAME> }
 
 #endif
