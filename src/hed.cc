@@ -211,14 +211,16 @@ int main(int argc, char* argv[]) {
       ++i;
     }
 
-    TLegend *leg = nullptr;
     if (g.second.size()>1 && g.second.front().legend) {
-      leg = new TLegend(0.72,0.9-g.second.size()*0.04,0.9,0.9);
+      // TODO: make legend a part of canv
+      // TODO: all legend functions
+      TLegend& leg = canvas.leg(
+        new TLegend(0.72,0.9-g.second.size()*0.04,0.9,0.9));
 
-      leg->SetFillColorAlpha(0,0.65);
+      leg.SetFillColorAlpha(0,0.65);
       for (const auto& h : g.second)
-        leg->AddEntry(h.h, h.legend->c_str());
-      leg->Draw();
+        leg.AddEntry(h.h, h.legend->c_str());
+      leg.Draw();
     }
 
     if (!group_back_cnt) {
@@ -227,7 +229,6 @@ int main(int argc, char* argv[]) {
     }
     canvas->Print(ofname.c_str(),("Title:"+*group).c_str());
     if (first_group) ofname.pop_back(), first_group = false;
-    delete leg;
   }
 
 }

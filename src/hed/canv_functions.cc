@@ -3,6 +3,7 @@
 #include <TCanvas.h>
 
 #include "function_map.hh"
+#include "hed/canv.hh"
 
 using base = function_map<TCanvas*>;
 
