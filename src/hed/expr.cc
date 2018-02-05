@@ -6,7 +6,7 @@
 
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 
-#include "runtime_curried.hh"
+#include "function_map.hh"
 #include "error.hh"
 #include "hed/verbosity.hh"
 
@@ -199,18 +199,18 @@ expression::expression(const char*& str): flags() {
     if (!parse_canv) {
       tag = hist_fcn_tag;
       new (&hist_fcn) decltype(hist_fcn)(
-        runtime_curried<TH1*>::make(name,args)
+        function_map<TH1*>::make(name,args)
       );
     } else {
       try {
         new (&hist_fcn) decltype(hist_fcn)(
-          runtime_curried<TH1*>::make(name,args)
+          function_map<TH1*>::make(name,args)
         );
         tag = hist_fcn_tag;
       } catch (...) {
         tag = canv_fcn_tag;
         new (&canv_fcn) decltype(canv_fcn)(
-          runtime_curried<TCanvas*>::make(name,args)
+          function_map<TCanvas*>::make(name,args)
         );
       }
     }

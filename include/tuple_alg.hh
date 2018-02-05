@@ -33,6 +33,8 @@ void tail_assign_impl(TL& l, TR&& r, std::index_sequence<I...>) {
       std::get<I+d>(l) = std::get<I>(std::forward<TR>(r))
     ),'\0')...};
 }
+template <typename TL, typename TR>
+inline void tail_assign_impl(TL&, TR&&, std::index_sequence<>) { }
 
 } // end namespace detail
 
