@@ -1,6 +1,7 @@
 #ifndef IVANP_OPT_DEF_HH
 #define IVANP_OPT_DEF_HH
 
+#include "program_options/common.hh"
 #include "program_options/fwd/opt_def.hh"
 
 namespace ivanp { namespace po {

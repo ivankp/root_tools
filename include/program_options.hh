@@ -7,7 +7,6 @@
 #include <array>
 #include <memory>
 #include <type_traits>
-#include <stdexcept>
 
 #include "type.hh"
 #include "type_traits.hh"
@@ -15,20 +14,7 @@
 #include "tuple_alg.hh"
 #include "seq_alg.hh"
 
-namespace ivanp { namespace po {
-struct error : std::runtime_error {
-  using std::runtime_error::runtime_error;
-  template <typename... Args>
-  error(const Args&... args): error(cat(args...)) { }
-};
-}}
-
-#ifdef __GNUG__
-#define ASSERT_MSG(MSG) "\n\n\033[33m" MSG "\033[0m\n"
-#else
-#define ASSERT_MSG(MSG) MSG
-#endif
-
+#include "program_options/common.hh"
 #ifndef IVANP_PROGRAM_OPTIONS_CC
 #include "program_options/opt_match.hh"
 #include "program_options/opt_parser.hh"

@@ -196,23 +196,17 @@ expression::expression(const char*& str): flags() {
     boost::string_view name(str,size_t(space-str)), args;
     if (space!=pos) ++space, args = { space,size_t(pos-space) };
 
-    if (!parse_canv) {
-      tag = hist_fcn_tag;
+    try {
       new (&hist_fcn) decltype(hist_fcn)(
         function_map<TH1*>::make(name,args)
       );
-    } else {
-      try {
-        new (&hist_fcn) decltype(hist_fcn)(
-          function_map<TH1*>::make(name,args)
-        );
-        tag = hist_fcn_tag;
-      } catch (...) {
-        tag = canv_fcn_tag;
-        new (&canv_fcn) decltype(canv_fcn)(
-          function_map<TCanvas*>::make(name,args)
-        );
-      }
+      tag = hist_fcn_tag;
+    } catch (...) {
+      if (!parse_canv) throw;
+      tag = canv_fcn_tag;
+      new (&canv_fcn) decltype(canv_fcn)(
+        function_map<canvas&>::make(name,args)
+      );
     }
 
     str = pos;
@@ -294,11 +288,13 @@ expression::expression(expression&& e)
   e.tag = none_tag;
 }
 
+template <typename T> void destroy(T& x) { x.~T(); }
+
 expression::~expression() {
   switch (tag) {
     case none_tag: break;
-    case exprs_tag: exprs.~vector<expression>(); break;
-    case hist_fcn_tag: hist_fcn.~function<void(TH1*)>(); break;
-    case canv_fcn_tag: canv_fcn.~function<void(TCanvas*)>(); break;
+    case exprs_tag: destroy(exprs); break;
+    case hist_fcn_tag: destroy(hist_fcn); break;
+    case canv_fcn_tag: destroy(canv_fcn); break;
   }
 }

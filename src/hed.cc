@@ -81,10 +81,10 @@ int main(int argc, char* argv[]) {
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
       (ofname,'o',"output file (.pdf)")
-      (hist_exprs_args,'r',"histogram expressions")
+      (hist_exprs_args,'e',"histogram expressions")
       (canv_exprs_args,'g',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
-      (*colors,{"-c","--colors"},"color palette")
+      (*colors,"--colors","color palette")
       (verbose,{"-v","--verbose"}, "print debug info\n"
        "e : expressions\n"
        "m : matched\n"
@@ -161,7 +161,10 @@ int main(int argc, char* argv[]) {
   if (sort_groups) group_map.sort();
 
   // Draw histograms ************************************************
-  canv canvas;
+  // canvas::c = std::make_unique<TCanvas>();
+  // canvas::c.reset(new TCanvas());
+  TCanvas _c;
+  canvas::c = &_c;
 
   cout << "\033[34mOutput file:\033[0m " << ofname << endl;
   unsigned group_back_cnt = group_map.size();
@@ -170,17 +173,14 @@ int main(int argc, char* argv[]) {
   for (auto& g : group_map) {
     --group_back_cnt;
     shared_str group = g.first; // need to copy pointer here
-                                // because canv can make new string
+                                // because canvas can make new string
     cout <<"\033[36m"<< *group << "\033[0m\n";
-
-    canvas->SetLogx(0);
-    canvas->SetLogy(0);
-    canvas->SetLogz(0);
 
     TH1* _h = g.second.front().h;
     _h->SetStats(false);
 
-    if (!canvas(canv_exprs,g.second.front(),group)) continue;
+    canvas canv(&g.second);
+    if (!canv(canv_exprs,group)) continue;
 
     const bool ymin_set = (_h->GetMinimumStored()!=-1111),
                ymax_set = (_h->GetMaximumStored()!=-1111);
@@ -189,13 +189,11 @@ int main(int argc, char* argv[]) {
       const auto range_y = hists_range_y(
         make_transform_iterator(g.second.begin(),[](auto& h){ return h.h; }),
         g.second.end(),
-        canvas->GetLogy());
+        canv->GetLogy());
 
       if (!ymin_set) _h->SetMinimum(range_y.first);
       if (!ymax_set) _h->SetMaximum(range_y.second);
     }
-
-    // h->GetYaxis()->SetRangeUser(range_y.first,range_y.second);
 
     unsigned i = 0;
     for (auto& h : g.second) {
@@ -211,24 +209,13 @@ int main(int argc, char* argv[]) {
       ++i;
     }
 
-    if (g.second.size()>1 && g.second.front().legend) {
-      // TODO: make legend a part of canv
-      // TODO: all legend functions
-      TLegend& leg = canvas.leg(
-        new TLegend(0.72,0.9-g.second.size()*0.04,0.9,0.9));
-
-      leg.SetFillColorAlpha(0,0.65);
-      for (const auto& h : g.second)
-        leg.AddEntry(h.h, h.legend->c_str());
-      leg.Draw();
-    }
+    canv.draw_legend();
 
     if (!group_back_cnt) {
       if (first_group) first_group = false;
       else ofname += ')';
     }
-    canvas->Print(ofname.c_str(),("Title:"+*group).c_str());
+    canv->Print(ofname.c_str(),("Title:"+*group).c_str());
     if (first_group) ofname.pop_back(), first_group = false;
   }
-
 }

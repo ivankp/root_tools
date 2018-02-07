@@ -1,43 +1,51 @@
 #ifndef IVANP_HED_CANV_HH
 #define IVANP_HED_CANV_HH
 
-#include <memory>
+#include <vector>
+#include <array>
 
 #include <TCanvas.h>
 #include <TLegend.h>
 
 #include "hed/hist.hh"
 
-struct canv {
-  TCanvas *c;
-  std::unique_ptr<TLegend> _leg;
+struct legend: TLegend {
+  enum pos_t { coord, tr, tl, br, bl } pos;
 
-  canv(): c(new TCanvas()) { }
-  canv(const canv&) = delete;
-  canv(canv&&) = delete;
-  ~canv() { delete c; }
+  legend(const std::array<float,4>& coords, pos_t pos)
+  : TLegend(std::get<0>(coords), std::get<1>(coords),
+            std::get<2>(coords), std::get<3>(coords)),
+    pos(pos) { }
+
+  void draw(const std::vector<hist>& hh);
+};
+
+struct canvas {
+  static TCanvas *c;
+
+  legend *leg;
+  std::vector<hist>* hh;
+
+  canvas(std::vector<hist>* hh);
+  ~canvas() { delete leg; }
+  canvas(const canvas&) = delete;
+  canvas(canvas&&) = delete;
 
   inline TCanvas& operator* () noexcept { return *c; }
   inline TCanvas* operator->() noexcept { return  c; }
 
-  bool operator()(
-    const std::vector<expression>& exprs,
-    hist& h,
-    shared_str& group
-  );
+  bool operator()(const std::vector<expression>& exprs, shared_str& group);
 
-  TLegend& leg() { return *_leg; }
-  TLegend& leg(TLegend* l) { _leg.reset(l); return *_leg; }
-
+  void draw_legend();
 };
 
-template <> class applicator<canv>: public applicator<hist> {
-  canv& c;
+template <> class applicator<canvas>: public applicator<hist> {
+  canvas& c;
 
   virtual bool hook(const expression& expr, int level);
 
 public:
-  applicator(canv& c, hist& h, shared_str& group);
+  applicator(canvas& c, hist& h, shared_str& group);
 };
 
 #endif

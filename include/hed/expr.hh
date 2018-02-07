@@ -31,7 +31,7 @@ std::ostream& operator<<(std::ostream&, flags::field);
 std::ostream& operator<<(std::ostream&, const flags&);
 
 class TH1;
-class TCanvas;
+class canvas;
 
 struct expression: flags {
   boost::regex re;
@@ -41,7 +41,7 @@ struct expression: flags {
   union {
     std::vector<expression> exprs;
     std::function<void(TH1*)> hist_fcn;
-    std::function<void(TCanvas*)> canv_fcn;
+    std::function<void(canvas&)> canv_fcn;
   };
 
   expression(const char*& str); // parsing constructor

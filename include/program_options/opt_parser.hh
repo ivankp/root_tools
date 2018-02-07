@@ -8,6 +8,7 @@
 #include <sstream>
 #endif
 
+#include "program_options/common.hh"
 #include "program_options/fwd/opt_parser.hh"
 #include "maybe_valid.hh"
 #include "type_traits.hh"
