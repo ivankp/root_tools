@@ -158,11 +158,10 @@ int main(int argc, char* argv[]) {
 
     loop(f);
   }
-  if (sort_groups) group_map.sort();
+  if (sort_groups) group_map.sort(
+    [](const auto& a, const auto& b){ return *(a->first) < *(b->first); });
 
   // Draw histograms ************************************************
-  // canvas::c = std::make_unique<TCanvas>();
-  // canvas::c.reset(new TCanvas());
   TCanvas _c;
   canvas::c = &_c;
 

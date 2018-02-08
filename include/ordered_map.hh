@@ -96,7 +96,7 @@ public:
   void sort(Pred&& pred) {
     using it_t = typename decltype(order)::value_type;
     std::sort( order.begin(), order.end(),
-      [&pred](const it_t& a, const it_t& b) { return pred(*a,*b); });
+      [&pred](const it_t& a, const it_t& b){ return pred(a,b); });
   }
 
   bool erase_key(const Key& key) {
