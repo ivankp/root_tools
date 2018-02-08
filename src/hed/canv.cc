@@ -26,39 +26,38 @@ bool canvas::operator()(
   return applicator<canvas>(*this,hh->front(),group)(exprs);
 }
 
-TCanvas* canvas::c;
+TCanvas* canvas::c = nullptr;
 
-canvas::canvas(std::vector<hist>* hh): leg(nullptr), hh(hh) {
+canvas::canvas(std::vector<hist>* hh): hh(hh), leg(nullptr) {
   c->SetLogx(0);
   c->SetLogy(0);
   c->SetLogz(0);
 }
 
-void legend::draw(const std::vector<hist>& hh) {
+std::unique_ptr<TLegend> legend_def::operator()(const std::vector<hist>& hh) {
+  if (pos==none) return nullptr;
+
   bool draw = false;
   for (const auto& h : hh)
     if (h.legend) { draw = true; break; }
-  if (!draw) return;
+  if (!draw) return nullptr;
+
   if (pos!=coord) {
     const auto nrows = hh.size();
-    if (pos==tr || pos==tl) SetY1(0.9-0.04*nrows); else
-    if (pos==br || pos==bl) SetY2(0.1+0.04*nrows);
+    if (pos==tr || pos==tl) std::get<1>(lbrt) = 0.9-0.04*nrows; else
+    if (pos==br || pos==bl) std::get<3>(lbrt) = 0.1+0.04*nrows;
   }
-  // const char* header_c = GetHeader();
-  // const std::string header(header_c ? header_c : "");
-  // Clear();
-  // if (!header.empty()) SetHeader(header.c_str());
-  for (const auto& h : hh)
-    AddEntry(h.h, h.legend->c_str());
-  Draw();
-}
 
-void canvas::draw_legend() {
-  // There's a bug in TLegend that makes it difficult to reuse
-  if (leg) {
-    leg = new legend(*leg);
-    leg->draw(*hh);
-    leg = nullptr;
-  }
+  auto leg = std::make_unique<TLegend>(
+    std::get<0>(lbrt), std::get<1>(lbrt),
+    std::get<2>(lbrt), std::get<3>(lbrt)
+  );
+  leg->SetFillColorAlpha(0,0.65);
+  if (header) leg->SetHeader(header);
+
+  for (const auto& h : hh)
+    leg->AddEntry(h.h, h.legend->c_str());
+  leg->Draw();
+  return leg;
 }
 

@@ -3,31 +3,30 @@
 
 #include <vector>
 #include <array>
+#include <memory>
 
 #include <TCanvas.h>
 #include <TLegend.h>
 
 #include "hed/hist.hh"
 
-struct legend: TLegend {
-  enum pos_t { coord, tr, tl, br, bl } pos;
-
-  legend(const std::array<float,4>& coords, pos_t pos)
-  : TLegend(std::get<0>(coords), std::get<1>(coords),
-            std::get<2>(coords), std::get<3>(coords)),
-    pos(pos) { }
-
-  void draw(const std::vector<hist>& hh);
+struct legend_def {
+  enum pos_t { none, coord, tr, tl, br, bl } pos = none;
+  std::array<float,4> lbrt;
+  const char* header = nullptr;
+  std::unique_ptr<TLegend> operator()(const std::vector<hist>& hh);
 };
 
 struct canvas {
-  static TCanvas *c;
+  static TCanvas *c; // reuse canvas
 
-  legend *leg;
   std::vector<hist>* hh;
 
+  legend_def leg_def;
+  std::unique_ptr<TLegend> leg; // can't reuse legend (ROOT bug)
+
   canvas(std::vector<hist>* hh);
-  ~canvas() { delete leg; }
+  ~canvas() { }
   canvas(const canvas&) = delete;
   canvas(canvas&&) = delete;
 
@@ -36,7 +35,7 @@ struct canvas {
 
   bool operator()(const std::vector<expression>& exprs, shared_str& group);
 
-  void draw_legend();
+  inline void draw_legend() { leg = leg_def(*hh); }
 };
 
 template <> class applicator<canvas>: public applicator<hist> {

@@ -15,6 +15,8 @@
 #include "error.hh"
 #include "type.hh"
 
+#include "program_options/opt_parser.hh"
+
 template <size_t Ndefaults, typename... Args>
 class interpreted_args {
 public:
@@ -34,11 +36,11 @@ private:
   template <size_t I, typename It, typename End>
   bool convert_impl(It& it, const End& end) {
     if (it!=end) {
-      if (boost::conversion::try_lexical_convert( *it, std::get<I>(args) ))
-        return true;
-      else throw ivanp::error(
-        '\"',*it,"\" cannot be interpreted as ",
-        type_str<std::tuple_element_t<I,args_tup>>());
+      ivanp::po::arg_parser(
+        std::string(it->begin(),it->end()).c_str(),
+        std::get<I>(args)
+      );
+      return true;
     }
     else if (I>=nargs-Ndefaults) return false;
     else throw std::runtime_error("too few arguments");
