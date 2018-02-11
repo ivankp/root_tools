@@ -4,8 +4,10 @@
 #include <string>
 #include <vector>
 
+#include <TLegend.h>
+
 #define TEST(var) \
-  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+  std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
 
 applicator<canvas>::applicator(canvas& c, hist& h, shared_str& group)
 : applicator<hist>(h,group), c(c) { }
@@ -28,13 +30,19 @@ bool canvas::operator()(
 
 TCanvas* canvas::c = nullptr;
 
-canvas::canvas(std::vector<hist>* hh): hh(hh), leg(nullptr) {
+canvas::canvas(std::vector<hist>* hh): hh(hh), objs() {
   c->SetLogx(0);
   c->SetLogy(0);
   c->SetLogz(0);
 }
 
-std::unique_ptr<TLegend> legend_def::operator()(const std::vector<hist>& hh) {
+void canvas::draw() {
+  auto* leg = leg_def(*hh);
+  if (leg) objs.push_back(leg);
+  for (TObject* obj : objs) obj->Draw();
+}
+
+TObject* legend_def::operator()(const std::vector<hist>& hh) {
   if (pos==none) return nullptr;
 
   bool draw = false;
@@ -48,7 +56,7 @@ std::unique_ptr<TLegend> legend_def::operator()(const std::vector<hist>& hh) {
     if (pos==br || pos==bl) std::get<3>(lbrt) = 0.1+0.04*nrows;
   }
 
-  auto leg = std::make_unique<TLegend>(
+  auto* leg = new TLegend(
     std::get<0>(lbrt), std::get<1>(lbrt),
     std::get<2>(lbrt), std::get<3>(lbrt)
   );
@@ -57,7 +65,6 @@ std::unique_ptr<TLegend> legend_def::operator()(const std::vector<hist>& hh) {
 
   for (const auto& h : hh)
     leg->AddEntry(h.h, h.legend->c_str());
-  leg->Draw();
   return leg;
 }
 

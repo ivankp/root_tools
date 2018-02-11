@@ -23,7 +23,7 @@
 #include "ring.hh"
 
 #define TEST(var) \
-  std::cout <<"\033[36m"<< #var <<"\033[0m"<< " = " << var << std::endl;
+  std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
 
 using std::cout;
 using std::endl;
@@ -68,6 +68,8 @@ void loop(TDirectory* dir) { // LOOP
 
 verbosity verbose;
 
+#define RC(N,R,G,B) "\033[1;38;2;" #R ";" #G ";" #B "m" #N
+
 int main(int argc, char* argv[]) {
   std::string ofname;
   std::vector<const char*> ifnames;
@@ -94,8 +96,27 @@ int main(int argc, char* argv[]) {
       .help_suffix(
         "expression format: suffix/regex/subst/expr\n"
         "good palettes:\n"
-        "\t602 46 8 90 52 41\n"
-        "\t56 61 65 71 75 81 85 91 95 99\n"
+        // https://root.cern.ch/doc/master/classTColor.html
+        "\t"
+          RC(602,0,0,153) " "
+          RC(46,206,93,99) " "
+          RC(8,90,214,82) " "
+          RC(90,255,238,0) " "
+          RC(52,123,0,255) " "
+          RC(41,214,206,131)
+        "\033[0m\n"
+        "\t"
+        RC(56,23,0,254) " "
+        RC(61,0,93,255) " "
+        RC(65,0,186,255) " "
+        RC(71,0,254,181) " "
+        RC(75,1,254,83) " "
+        RC(81,58,255,0) " "
+        RC(85,155,255,0) " "
+        RC(91,255,214,0) " "
+        RC(95,255,117,0) " "
+        RC(99,255,20,0)
+        "\033[0m\n"
         "https://github.com/ivankp/root_tools2"
       ).parse(argc,argv,true)) return 0;
 
@@ -208,7 +229,7 @@ int main(int argc, char* argv[]) {
       ++i;
     }
 
-    canv.draw_legend();
+    canv.draw();
 
     if (!group_back_cnt) {
       if (first_group) first_group = false;

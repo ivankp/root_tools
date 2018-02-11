@@ -4,6 +4,8 @@
 
 #include <TCanvas.h>
 #include <TLegend.h>
+#include <TLine.h>
+#include <TLatex.h>
 
 #include "function_map.hh"
 #include "hed/canv.hh"
@@ -13,11 +15,15 @@ using base = function_map<canvas&>;
 
 #include "hed/fcn_def_macros.hh"
 
+#include <iostream>
+#define TEST(var) \
+  std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
+
 using std::get;
 
 namespace fcn_def {
 
-F(log,ESC(1,std::string,bool),true) {
+F(log,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
   for (char c : arg<0>()) {
     if (c=='x' || c=='X') a->SetLogx(b);
@@ -27,14 +33,14 @@ F(log,ESC(1,std::string,bool),true) {
   }
 }
 
-F(margin,ESC(1,std::array<float,4>),ESC({.1f,0.1f,0.1f,0.1f})) {
+F(margin,TIE(1,std::array<float,4>),TIE({.1f,0.1f,0.1f,0.1f})) {
   a->SetMargin(
     get<0>(arg<0>()), get<2>(arg<0>()),
     get<1>(arg<0>()), get<3>(arg<0>())
   );
 }
 
-F(ticks,ESC(1,std::string,bool),true) {
+F(ticks,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
   for (char c : arg<0>()) {
     if (c=='x' || c=='X') a->SetTickx(b);
@@ -43,7 +49,7 @@ F(ticks,ESC(1,std::string,bool),true) {
   }
 }
 
-F(grid,ESC(1,std::string,bool),true) {
+F(grid,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
   for (char c : arg<0>()) {
     if (c=='x' || c=='X') a->SetGridx(b);
@@ -79,6 +85,35 @@ struct leg final: public base,
   void operator()(type c) const { c.leg_def = def; }
 };
 
+F0(line,TIE(std::array<float,4>)) {
+  a.objs.push_back(new TLine(
+    get<0>(arg<0>()), get<1>(arg<0>()),
+    get<2>(arg<0>()), get<3>(arg<0>()) 
+  ));
+};
+F0(linex,float) {
+  a.objs.push_back(new TLine(
+    arg<0>(), a->GetUymin(),
+    arg<0>(), a.hh->front()->GetMaximumStored()
+  ));
+  TEST(a.hh->front()->GetMaximumStored())
+};
+F0(liney,float) {
+  a.objs.push_back(new TLine(
+    a.hh->front()->GetXaxis()->GetXmin(), arg<0>(),
+    a.hh->front()->GetXaxis()->GetXmax(), arg<0>()
+  ));
+};
+
+F(tex,TIE(3,std::array<float,2>,std::string,Style_t,Float_t,Color_t),
+      TIE(12,1,1)) {
+  auto* tex = new TLatex(get<0>(arg<0>()),get<1>(arg<0>()),arg<1>().c_str());
+  tex->SetTextFont(arg<2>());
+  tex->SetTextSize(arg<3>()*0.05);
+  tex->SetTextColor(arg<4>());
+  a.objs.push_back(tex);
+};
+
 } // ----------------------------------------------------------------
 
 MAP {
@@ -86,6 +121,10 @@ MAP {
   ADD(leg),
   ADD(margin),
   ADD(ticks),
-  ADD(grid)
+  ADD(grid),
+  ADD(line),
+  ADD(linex),
+  ADD(liney),
+  ADD(tex)
 };
 

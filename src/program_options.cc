@@ -293,7 +293,7 @@ void program_options::help() {
   }
 
   if (help_suffix_str.size()) {
-    wrap(help_suffix_str,line_width);
+    // wrap(help_suffix_str,line_width);
     cout <<'\n'<< help_suffix_str << '\n';
   }
   cout.flush();

@@ -6,7 +6,6 @@
 #include <memory>
 
 #include <TCanvas.h>
-#include <TLegend.h>
 
 #include "hed/hist.hh"
 
@@ -14,7 +13,7 @@ struct legend_def {
   enum pos_t { none, coord, tr, tl, br, bl } pos = none;
   std::array<float,4> lbrt;
   const char* header = nullptr;
-  std::unique_ptr<TLegend> operator()(const std::vector<hist>& hh);
+  TObject* operator()(const std::vector<hist>& hh);
 };
 
 struct canvas {
@@ -22,11 +21,11 @@ struct canvas {
 
   std::vector<hist>* hh;
 
-  legend_def leg_def;
-  std::unique_ptr<TLegend> leg; // can't reuse legend (ROOT bug)
+  legend_def leg_def; // can't reuse legend (ROOT bug)
+  std::vector<TObject*> objs;
 
   canvas(std::vector<hist>* hh);
-  ~canvas() { }
+  ~canvas() { for (TObject* obj : objs) delete obj; }
   canvas(const canvas&) = delete;
   canvas(canvas&&) = delete;
 
@@ -35,7 +34,7 @@ struct canvas {
 
   bool operator()(const std::vector<expression>& exprs, shared_str& group);
 
-  inline void draw_legend() { leg = leg_def(*hh); }
+  void draw();
 };
 
 template <> class applicator<canvas>: public applicator<hist> {

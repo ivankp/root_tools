@@ -1,7 +1,7 @@
 #ifndef HED_FCN_DEF_MACROS_HH
 #define HED_FCN_DEF_MACROS_HH
 
-#define ESC(...) __VA_ARGS__
+#define TIE(...) __VA_ARGS__
 
 #define F0(NAME,T) \
   struct NAME final: public base, private interpreted_args<0,T> { \
