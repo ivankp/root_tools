@@ -1,6 +1,7 @@
 // Developed by Ivan Pogrebnyak, MSU
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -237,5 +238,22 @@ int main(int argc, char* argv[]) {
     }
     canv->Print(ofname.c_str(),("Title:"+*group).c_str());
     if (first_group) ofname.pop_back(), first_group = false;
+  }
+
+  if (ofname.back()==')') ofname.pop_back();
+  std::ofstream pdf(ofname, std::ofstream::out | std::ofstream::app);
+  pdf << '\n';
+  bool quote = false, ge = false;
+  for (int i=0; i<argc; ++i) {
+    if (argv[i][0]=='-') {
+      pdf << '\n';
+      if (argv[i][1]=='e' || argv[i][1]=='g') ge = true;
+      else quote = false;
+    }
+    if (quote) pdf << '\'';
+    pdf << argv[i];
+    if (quote) pdf << '\'';
+    pdf << ' ';
+    if (ge) ge = false, quote = true;
   }
 }
