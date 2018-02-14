@@ -1,5 +1,7 @@
 #include <string>
 
+#include <dlfcn.h>
+
 #include <TH1.h>
 #include <TAxis.h>
 #include <TF1.h>
@@ -11,6 +13,9 @@
 using base = function_map<TH1*>;
 
 #include "hed/fcn_def_macros.hh"
+
+#define TEST(var) \
+  std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
 
 namespace fcn_def {
 
@@ -34,11 +39,6 @@ F0(rebin,Int_t) { a->Rebin(arg<0>()); }
 
 F0(setbin,TIE(Int_t,Double_t)) { a->SetBinContent(arg<0>(),arg<1>()); }
 F0(seterr,TIE(Int_t,Double_t)) { a->SetBinError(arg<0>(),arg<1>()); }
-
-F(eval,TIE(1,std::string,std::string),{}) {
-  TF1 f("",arg<0>().c_str());
-  a->Eval(&f,arg<1>().c_str());
-}
 
 F0(line_width,Width_t) { a->SetLineWidth(arg<0>()); }
 F0(line_style,Style_t) { a->SetLineStyle(arg<0>()); }
@@ -106,6 +106,32 @@ F(val_fmt,TIE(1,std::string),{}) {
   gStyle->SetPaintTextFormat(arg<0>().c_str());
 }
 
+struct load final: public base,
+  private interpreted_args<1,std::string,std::string>
+{
+  const std::shared_ptr<void> dl;
+  void(*run)(TH1*);
+
+  template <typename F>
+  void _dlsym(F& f, const char* name) {
+    f = (F) dlsym(dl.get(),name);
+    if (const char *err = dlerror()) throw ivanp::error(
+      "cannot load symbol \'",name,"\'\n",err);
+  }
+
+  load(string_view arg_str): interpreted_args({{}},arg_str),
+    dl(dlopen(arg<0>().c_str(),RTLD_LAZY), dlclose)
+  {
+    if (!dl) throw ivanp::error("cannot open library\n",dlerror());
+    void(*init)(const std::string&);
+    _dlsym(init,"init");
+    _dlsym(run,"run");
+    init(arg<1>());
+  }
+
+  void operator()(type h) const { run(h); }
+};
+
 } // ----------------------------------------------------------------
 
 MAP {
@@ -136,6 +162,6 @@ MAP {
   ADD(opt),
   ADD(stats),
   ADD(val_fmt),
-  ADD(eval)
+  ADD(load)
 };
 
