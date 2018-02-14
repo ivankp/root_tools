@@ -2,6 +2,8 @@
 #include <array>
 #include <memory>
 
+#include <dlfcn.h>
+
 #include <TCanvas.h>
 #include <TLegend.h>
 #include <TLine.h>
@@ -9,10 +11,10 @@
 
 #include "function_map.hh"
 #include "hed/canv.hh"
-// #include "program_options/opt_parser.hh"
 
 using base = function_map<canvas&>;
 
+#define FCN_DEF_NS canv_fcn_def
 #include "hed/fcn_def_macros.hh"
 
 #include <iostream>
@@ -21,7 +23,7 @@ using base = function_map<canvas&>;
 
 using std::get;
 
-namespace fcn_def {
+namespace FCN_DEF_NS {
 
 F(log,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
@@ -92,6 +94,7 @@ F0(line,TIE(std::array<float,4>)) {
   ));
 };
 F0(linex,float) {
+  // TODO: fix vertical line
   a.objs.push_back(new TLine(
     arg<0>(), a->GetUymin(),
     arg<0>(), a.hh->front()->GetMaximumStored()
@@ -99,6 +102,7 @@ F0(linex,float) {
   TEST(a.hh->front()->GetMaximumStored())
 };
 F0(liney,float) {
+  // TODO: fix horizontal line
   a.objs.push_back(new TLine(
     a.hh->front()->GetXaxis()->GetXmin(), arg<0>(),
     a.hh->front()->GetXaxis()->GetXmax(), arg<0>()
@@ -114,6 +118,37 @@ F(tex,TIE(3,std::array<float,2>,std::string,Style_t,Float_t,Color_t),
   a.objs.push_back(tex);
 };
 
+struct load final: public base,
+  private interpreted_args<1,std::string,std::string>
+{
+  const std::shared_ptr<void> dl;
+  void(*run)(std::vector<TObject*>&,std::vector<TH1*>&);
+
+  template <typename F>
+  void _dlsym(F& f, const char* name) {
+    f = (F) dlsym(dl.get(),name);
+    if (const char *err = dlerror()) throw ivanp::error(
+      "cannot load symbol \'",name,"\'\n",err);
+  }
+
+  load(string_view arg_str): interpreted_args({},arg_str),
+    dl(dlopen(arg<0>().c_str(),RTLD_LAZY), dlclose)
+  {
+    if (!dl) throw ivanp::error("cannot open library\n",dlerror());
+    void(*init)(const std::string&);
+    _dlsym(init,"init");
+    _dlsym(run,"run");
+    init(arg<1>());
+  }
+
+  void operator()(type c) const {
+    std::vector<TH1*> hs;
+    hs.reserve(c.hh->size());
+    for (const auto& h : *c.hh) hs.push_back(h.h);
+    run(c.objs,hs);
+  }
+};
+
 } // ----------------------------------------------------------------
 
 MAP {
@@ -125,6 +160,7 @@ MAP {
   ADD(line),
   ADD(linex),
   ADD(liney),
-  ADD(tex)
+  ADD(tex),
+  ADD(load)
 };
 

@@ -196,17 +196,23 @@ expression::expression(const char*& str): flags() {
     boost::string_view name(str,size_t(space-str)), args;
     if (space!=pos) ++space, args = { space,size_t(pos-space) };
 
-    try {
+    if (parse_canv) {
+      try {
+        new (&canv_fcn) decltype(canv_fcn)(
+          function_map<canvas&>::make(name,args)
+        );
+        tag = canv_fcn_tag;
+      } catch (...) {
+        new (&hist_fcn) decltype(hist_fcn)(
+          function_map<TH1*>::make(name,args)
+        );
+        tag = hist_fcn_tag;
+      }
+    } else {
       new (&hist_fcn) decltype(hist_fcn)(
         function_map<TH1*>::make(name,args)
       );
       tag = hist_fcn_tag;
-    } catch (...) {
-      if (!parse_canv) throw;
-      tag = canv_fcn_tag;
-      new (&canv_fcn) decltype(canv_fcn)(
-        function_map<canvas&>::make(name,args)
-      );
     }
 
     str = pos;

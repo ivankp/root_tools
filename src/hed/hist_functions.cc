@@ -12,12 +12,15 @@
 
 using base = function_map<TH1*>;
 
+#define FCN_DEF_NS hist_fcn_def
 #include "hed/fcn_def_macros.hh"
 
 #define TEST(var) \
   std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
 
-namespace fcn_def {
+using std::get;
+
+namespace FCN_DEF_NS {
 
 template <typename F>
 void for_axes(const std::string& arg, TH1* h, F f) {
@@ -84,8 +87,8 @@ F(mlog,TIE(1,std::string,bool),true) {
   for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){ a->SetMoreLogLabels(arg); });
 }
 
-F0(range,TIE(std::string,double,double)) {
-  for_axes(arg<0>(),a,[min=arg<1>(),max=arg<2>()](TAxis* a){
+F0(range,TIE(std::string,std::array<double,2>)) {
+  for_axes(arg<0>(),a,[min=get<0>(arg<1>()),max=get<1>(arg<1>())](TAxis* a){
     a->SetRangeUser(min,max);
   });
 }
@@ -119,7 +122,7 @@ struct load final: public base,
       "cannot load symbol \'",name,"\'\n",err);
   }
 
-  load(string_view arg_str): interpreted_args({{}},arg_str),
+  load(string_view arg_str): interpreted_args({},arg_str),
     dl(dlopen(arg<0>().c_str(),RTLD_LAZY), dlclose)
   {
     if (!dl) throw ivanp::error("cannot open library\n",dlerror());

@@ -20,7 +20,8 @@ struct function_map {
       return (*all.at(name))(arg_str);
     } catch (const std::exception& e) {
       throw ivanp::error(
-        "no function \"",name,"\" with args \"",arg_str,"\"\n",e.what());
+        "cannot call function \"",name,"\" with args \"",arg_str,"\"\n",
+        e.what());
     }
   }
   using factory_ptr_type = function_type(*)(string_view);
