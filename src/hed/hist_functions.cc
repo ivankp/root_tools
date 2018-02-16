@@ -87,9 +87,14 @@ F(mlog,TIE(1,std::string,bool),true) {
   for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){ a->SetMoreLogLabels(arg); });
 }
 
+F(tick_length,TIE(1,std::string,Float_t),true) {
+  for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){ a->SetTickLength(arg); });
+}
+
 F0(range,TIE(std::string,std::array<double,2>)) {
-  for_axes(arg<0>(),a,[min=get<0>(arg<1>()),max=get<1>(arg<1>())](TAxis* a){
-    a->SetRangeUser(min,max);
+  // TODO: can't capture by reference for some reason
+  for_axes(arg<0>(),a,[arg=arg<1>()](TAxis* a){
+    a->SetRangeUser(get<0>(arg),get<1>(arg));
   });
 }
 
@@ -157,6 +162,7 @@ MAP {
   ADD(label_size),
   ADD(label_offset),
   ADD(label_font),
+  ADD(tick_length),
   ADD(noexp),
   ADD(mlog),
   ADD(rebin),

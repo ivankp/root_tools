@@ -5,17 +5,16 @@
 #include <limits>
 #include <cmath>
 
-template <typename Begin, typename End>
-std::pair<double,double> hists_range_y(Begin it, End end, bool logy) {
+template <typename Hs>
+std::pair<double,double> hists_range_y(Hs& hs, bool logy) {
   double ymin = std::numeric_limits<double>::max(),
          ymax = (logy ? 0 : std::numeric_limits<double>::min());
 
-  for (; it!=end; ++it) {
-    auto& h = **it;
-    for (int i=1, n=h.GetNbinsX(); i<=n; ++i) {
-      double y = h.GetBinContent(i);
+  for (auto& h : hs) {
+    for (int i=1, n=h->GetNbinsX(); i<=n; ++i) {
+      double y = h->GetBinContent(i);
       if (logy && y<=0.) continue;
-      double e = h.GetBinError(i);
+      double e = h->GetBinError(i);
       if (y==0. && e==0.) continue; // ignore empty bins
       if (y<ymin) ymin = y;
       if (y>ymax) ymax = y;

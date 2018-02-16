@@ -3,16 +3,16 @@
 
 #define TIE(...) __VA_ARGS__
 
-#define F0(NAME,T) \
-  struct NAME final: public base, private interpreted_args<0,T> { \
+#define F0(NAME,...) \
+  struct NAME final: public base, private interpreted_args<0,##__VA_ARGS__> { \
     using interpreted_args::interpreted_args; \
     void operator()(type) const; \
   }; \
   void NAME::operator()(typename base::type a) const
 
-#define F(NAME,T,D) \
-  struct NAME final: public base, private interpreted_args<T> { \
-    NAME(string_view arg_str): interpreted_args({D},arg_str) { } \
+#define F(NAME,Ts,Ds) \
+  struct NAME final: public base, private interpreted_args<Ts> { \
+    NAME(string_view arg_str): interpreted_args({Ds},arg_str) { } \
     void operator()(type) const; \
   }; \
   void NAME::operator()(typename base::type a) const

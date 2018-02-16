@@ -25,18 +25,20 @@ using std::get;
 
 namespace FCN_DEF_NS {
 
+F0(pad,unsigned) { getpad(a.c,arg<0>())->cd(); }
+
 F(log,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
   for (char c : arg<0>()) {
-    if (c=='x' || c=='X') a->SetLogx(b);
-    else if (c=='y' || c=='Y') a->SetLogy(b);
-    else if (c=='z' || c=='Z') a->SetLogz(b);
+    if (c=='x' || c=='X') gPad->SetLogx(b);
+    else if (c=='y' || c=='Y') gPad->SetLogy(b);
+    else if (c=='z' || c=='Z') gPad->SetLogz(b);
     else throw ivanp::error("log: invalid axis \"",c,'\"');
   }
 }
 
 F(margin,TIE(1,std::array<float,4>),TIE({.1f,0.1f,0.1f,0.1f})) {
-  a->SetMargin(
+  gPad->SetMargin(
     get<0>(arg<0>()), get<2>(arg<0>()),
     get<1>(arg<0>()), get<3>(arg<0>())
   );
@@ -45,8 +47,8 @@ F(margin,TIE(1,std::array<float,4>),TIE({.1f,0.1f,0.1f,0.1f})) {
 F(ticks,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
   for (char c : arg<0>()) {
-    if (c=='x' || c=='X') a->SetTickx(b);
-    else if (c=='y' || c=='Y') a->SetTicky(b);
+    if (c=='x' || c=='X') gPad->SetTickx(b);
+    else if (c=='y' || c=='Y') gPad->SetTicky(b);
     else throw ivanp::error("ticks: invalid axis \"",c,'\"');
   }
 }
@@ -54,8 +56,8 @@ F(ticks,TIE(1,std::string,bool),true) {
 F(grid,TIE(1,std::string,bool),true) {
   const bool b = arg<1>();
   for (char c : arg<0>()) {
-    if (c=='x' || c=='X') a->SetGridx(b);
-    else if (c=='y' || c=='Y') a->SetGridy(b);
+    if (c=='x' || c=='X') gPad->SetGridx(b);
+    else if (c=='y' || c=='Y') gPad->SetGridy(b);
     else throw ivanp::error("ticks: invalid axis \"",c,'\"');
   }
 }
@@ -90,7 +92,7 @@ struct leg final: public base,
 F0(line,TIE(std::array<float,4>)) {
   a.objs.push_back(new TLine(
     get<0>(arg<0>()), get<1>(arg<0>()),
-    get<2>(arg<0>()), get<3>(arg<0>()) 
+    get<2>(arg<0>()), get<3>(arg<0>())
   ));
 };
 F0(linex,float) {
@@ -117,6 +119,21 @@ F(tex,TIE(3,std::array<float,2>,std::string,Style_t,Float_t,Color_t),
   tex->SetTextColor(arg<4>());
   a.objs.push_back(tex);
 };
+
+F(rat,TIE(1,float),0.25) {
+  a.rat = true;
+  const double y3 = arg<0>(),
+               y1 = a->GetBottomMargin()/y3,
+               y2 = a->GetTopMargin()/(1.-y3);
+  // hopefully these don't leak
+  TPad *top = new TPad("top_pad","",0,y3,1,1);
+  TPad *bot = new TPad("bot_pad","",0,0,1,y3);
+  top->SetMargin(a->GetLeftMargin(),a->GetRightMargin(),0,y2);
+  bot->SetMargin(a->GetLeftMargin(),a->GetRightMargin(),y1,0);
+  top->Draw();
+  bot->Draw();
+  top->cd();
+}
 
 struct load final: public base,
   private interpreted_args<1,std::string,std::string>
@@ -161,6 +178,8 @@ MAP {
   ADD(linex),
   ADD(liney),
   ADD(tex),
-  ADD(load)
+  ADD(rat),
+  ADD(load),
+  ADD(pad)
 };
 

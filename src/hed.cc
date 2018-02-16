@@ -10,6 +10,7 @@
 
 #include <TFile.h>
 #include <TDirectory.h>
+#include <TLine.h>
 
 #include "program_options.hh"
 #include "tkey.hh"
@@ -67,7 +68,31 @@ void loop(TDirectory* dir) { // LOOP
   }
 }
 
+template <typename Hs>
+void auto_range(Hs& hs) {
+  auto& _h = hs.front();
+  const bool ymin_set = (_h->GetMinimumStored()!=-1111),
+             ymax_set = (_h->GetMaximumStored()!=-1111);
+  if (!ymin_set || !ymax_set) {
+    const auto range_y = hists_range_y(hs,gPad->GetLogy());
+    if (!ymin_set) _h->SetMinimum(range_y.first);
+    if (!ymax_set) _h->SetMaximum(range_y.second);
+  }
+}
+
 verbosity verbose;
+
+void print_primitives(TPad* pad, unsigned i=0) {
+  for (auto* p : *pad->GetListOfPrimitives()) {
+    for (unsigned n=i; n; --n) cout << "  ";
+    cout << "\033[35m" << p->ClassName() << "\033[0m : "
+         << p->GetName() << " : "
+         << p->GetTitle() << '\n';
+    static const TClass* pad_class = TClass::GetClass("TPad");
+    if (p->InheritsFrom(pad_class))
+      print_primitives(static_cast<TPad*>(p),i+1);
+  }
+}
 
 #define RC(N,R,G,B) "\033[1;38;2;" #R ";" #G ";" #B "m" #N
 
@@ -77,13 +102,14 @@ int main(int argc, char* argv[]) {
   std::vector<const char*> hist_exprs_args, canv_exprs_args;
   bool sort_groups = false;
   ring<std::vector<Color_t>> colors;
+  enum class Ext { pdf, root } ext = Ext::pdf;
 
   try {
     using namespace ivanp::po;
     const auto start = std::chrono::steady_clock::now();
     if (program_options()
       (ifnames,'i',"input files (.root)",req(),pos())
-      (ofname,'o',"output file (.pdf)")
+      (ofname,'o',"output file (.pdf|.root)")
       (hist_exprs_args,'e',"histogram expressions")
       (canv_exprs_args,'g',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
@@ -92,6 +118,7 @@ int main(int argc, char* argv[]) {
        "e : expressions\n"
        "m : matched\n"
        "n : not matched\n"
+       "c : canvas primitives\n"
        "default: all",
        switch_init(verbosity::all))
       .help_suffix(
@@ -133,9 +160,10 @@ int main(int argc, char* argv[]) {
       ofname.reserve(len + (rm_ext ? -1 : 4));
       ofname.assign(name, rm_ext ? len-5 : len);
       ofname += ".pdf";
-    } else if (!ends_with(ofname,".pdf")) {
-      throw std::runtime_error("output file name must end in \".pdf\"");
-    }
+    } else if (ends_with(ofname,".root")) {
+      ext = Ext::root;
+    } else if (!ends_with(ofname,".pdf")) throw std::runtime_error(
+      "output file name must end in \".pdf\" or \".root\"");
 
     if (!hist_exprs_args.empty()) {
       expression::parse_canv = false;
@@ -183,77 +211,129 @@ int main(int argc, char* argv[]) {
   if (sort_groups) group_map.sort(
     [](const auto& a, const auto& b){ return *(a->first) < *(b->first); });
 
-  // Draw histograms ************************************************
-  TCanvas _c;
-  canvas::c = &_c;
+  if (ext==Ext::pdf) {
+    // Draw histograms ************************************************
+    TCanvas _c;
+    canvas::c = &_c;
 
-  cout << "\033[34mOutput file:\033[0m " << ofname << endl;
-  unsigned group_back_cnt = group_map.size();
-  if (group_back_cnt > 1) ofname += '(';
-  bool first_group = true;
-  for (auto& g : group_map) {
-    --group_back_cnt;
-    shared_str group = g.first; // need to copy pointer here
-                                // because canvas can make new string
-    cout <<"\033[36m"<< *group << "\033[0m\n";
+    cout << "\033[34mOutput file:\033[0m " << ofname << endl;
+    unsigned group_back_cnt = group_map.size();
+    if (group_back_cnt > 1) ofname += '(';
+    bool first_group = true;
+    for (auto& g : group_map) {
+      --group_back_cnt;
+      shared_str group = g.first; // need to copy pointer here
+                                  // because canvas can make new string
+      cout <<"\033[36m"<< *group << "\033[0m\n";
 
-    TH1* _h = g.second.front().h;
-    _h->SetStats(false);
+      TH1* _h = g.second.front().h;
+      _h->SetStats(false);
 
-    canvas canv(&g.second);
-    if (!canv(canv_exprs,group)) continue;
+      canvas canv(&g.second);
+      if (!canv(canv_exprs,group)) continue;
+      if (canv.rat) getpad(&_c,1)->cd();
 
-    const bool ymin_set = (_h->GetMinimumStored()!=-1111),
-               ymax_set = (_h->GetMaximumStored()!=-1111);
+      auto_range(g.second);
 
-    if (!ymin_set || !ymax_set) {
-      const auto range_y = hists_range_y(
-        make_transform_iterator(g.second.begin(),[](auto& h){ return h.h; }),
-        g.second.end(),
-        canv->GetLogy());
-
-      if (!ymin_set) _h->SetMinimum(range_y.first);
-      if (!ymax_set) _h->SetMaximum(range_y.second);
-    }
-
-    unsigned i = 0;
-    for (auto& h : g.second) {
-      // TODO: make these overridable
-      if (colors) {
-        const auto color = colors[i];
-        h->SetLineColor(color);
-        h->SetMarkerColor(color);
+      unsigned i = 0;
+      for (auto& h : g.second) {
+        // TODO: make these overridable
+        if (colors) {
+          const auto color = colors[i];
+          h->SetLineColor(color);
+          h->SetMarkerColor(color);
+        }
+        h->SetLineWidth(2);
+        h->Draw(cat(h->GetOption(),h.h==_h ? "" : "SAME").c_str());
+        ++i;
       }
-      h->SetLineWidth(2);
-      h->SetTitleOffset(1.1,"Y");
-      h->Draw(cat(h->GetOption(),h.h==_h ? "" : "SAME").c_str());
-      ++i;
+
+      canv.draw();
+
+      if (canv.rat) { // draw ratio plots
+        TVirtualPad* pad = getpad(&_c,2);
+        pad->cd();
+        pad->SetTickx();
+
+        std::vector<TH1*> hh;
+        const unsigned n = g.second.size()-1;
+        hh.reserve(n);
+
+        TAxis *_ax = _h->GetXaxis();
+        TAxis *_ay = _h->GetYaxis();
+
+        for (unsigned i=0; i<n; ++i) {
+          TH1* h = static_cast<TH1*>(g.second[i+1]->Clone());
+          h->GetListOfFunctions()->Clear();
+          h->SetStats(false);
+          h->Divide(_h);
+          if (!i) {
+            TAxis * ax =  h->GetXaxis();
+            TAxis * ay =  h->GetYaxis();
+
+            // TODO: compute correct scaling factors
+            ax->SetTitle(_ax->GetTitle());
+            ax->SetTitleSize(_ax->GetTitleSize()*3.5);
+            _ay->SetTitleSize(_ay->GetTitleSize()*1.6);
+
+            const auto tx = _ax->GetTickLength();
+            _ax->SetTickLength(tx*1.1);
+            ax->SetTickLength(tx*3.3);
+            const auto ty = _ay->GetTickLength()*0.66;
+            _ay->SetTickLength(ty);
+            ay->SetTickLength(ty);
+            const auto lx = _ax->GetLabelSize();
+            ax->SetLabelSize(lx*3.5);
+            const auto ly = _ay->GetLabelSize();
+            _ay->SetLabelSize(ly*1.5);
+            ay->SetLabelSize(ly*2.5);
+
+            h->Draw();
+
+            TLine* l1 = new TLine(_ax->GetXmin(),1,_ax->GetXmax(),1);
+            l1->Draw();
+            canv.objs.push_back(l1);
+          } else {
+            h->Draw("SAME");
+          }
+          hh.push_back(h);
+          canv.objs.push_back(h);
+        }
+        auto_range(hh); // Y-axis range
+      }
+
+      if (!group_back_cnt) {
+        if (first_group) first_group = false;
+        else ofname += ')';
+      }
+      canv->Print(ofname.c_str(),("Title:"+*group).c_str());
+      if (first_group) ofname.pop_back(), first_group = false;
+
+      if (verbose(verbosity::canv)) {
+        print_primitives(&_c);
+        cout.flush();
+      }
     }
 
-    canv.draw();
-
-    if (!group_back_cnt) {
-      if (first_group) first_group = false;
-      else ofname += ')';
+    if (ofname.back()==')') ofname.pop_back();
+    std::ofstream pdf(ofname, std::ofstream::out | std::ofstream::app);
+    pdf << '\n';
+    bool quote = false, ge = false;
+    for (int i=0; i<argc; ++i) {
+      if (argv[i][0]=='-') {
+        pdf << '\n';
+        if (argv[i][1]=='e' || argv[i][1]=='g') ge = true;
+        else quote = false;
+      }
+      if (quote) pdf << '\'';
+      pdf << argv[i];
+      if (quote) pdf << '\'';
+      pdf << ' ';
+      if (ge) ge = false, quote = true;
     }
-    canv->Print(ofname.c_str(),("Title:"+*group).c_str());
-    if (first_group) ofname.pop_back(), first_group = false;
-  }
 
-  if (ofname.back()==')') ofname.pop_back();
-  std::ofstream pdf(ofname, std::ofstream::out | std::ofstream::app);
-  pdf << '\n';
-  bool quote = false, ge = false;
-  for (int i=0; i<argc; ++i) {
-    if (argv[i][0]=='-') {
-      pdf << '\n';
-      if (argv[i][1]=='e' || argv[i][1]=='g') ge = true;
-      else quote = false;
-    }
-    if (quote) pdf << '\'';
-    pdf << argv[i];
-    if (quote) pdf << '\'';
-    pdf << ' ';
-    if (ge) ge = false, quote = true;
+  } else if (ext==Ext::root) {
+    // TODO: root output
+    throw std::runtime_error("ROOT output not implemented yet");
   }
 }

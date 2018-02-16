@@ -3,8 +3,8 @@
 
 struct verbosity {
   enum opt_t {
-    none=0, exprs=1, matched=2, not_matched=4,
-    all=exprs|matched|not_matched
+    none=0, exprs=1, matched=2, not_matched=4, canv=8,
+    all=exprs|matched|not_matched|canv
   } opt;
 
   verbosity(): opt(none) { }
@@ -15,6 +15,7 @@ struct verbosity {
         case 'e': opt = opt_t(opt | exprs); break;
         case 'm': opt = opt_t(opt | matched); break;
         case 'n': opt = opt_t(opt | not_matched); break;
+        case 'c': opt = opt_t(opt | canv); break;
         default: throw std::runtime_error("bad verbosity option");
       }
     }

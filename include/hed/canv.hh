@@ -18,6 +18,7 @@ struct legend_def {
 
 struct canvas {
   static TCanvas *c; // reuse canvas
+  bool rat = false;
 
   std::vector<hist>* hh;
 
@@ -45,5 +46,7 @@ template <> class applicator<canvas>: public applicator<hist> {
 public:
   applicator(canvas& c, hist& h, shared_str& group);
 };
+
+TVirtualPad* getpad(TVirtualPad* pad, unsigned n);
 
 #endif

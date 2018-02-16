@@ -38,8 +38,14 @@ canvas::canvas(std::vector<hist>* hh): hh(hh), objs() {
 
 void canvas::draw() {
   auto* leg = leg_def(*hh);
-  if (leg) objs.push_back(leg);
   for (TObject* obj : objs) obj->Draw();
+  if (leg) {
+    auto* pad = gPad;
+    c->cd();
+    leg->Draw();
+    pad->cd();
+    objs.push_back(leg);
+  }
 }
 
 TObject* legend_def::operator()(const std::vector<hist>& hh) {
@@ -68,3 +74,12 @@ TObject* legend_def::operator()(const std::vector<hist>& hh) {
   return leg;
 }
 
+TVirtualPad* getpad(TVirtualPad* pad, unsigned n) {
+  unsigned i = 0;
+  for (auto* p : *pad->GetListOfPrimitives()) {
+    if (p->InheritsFrom(TVirtualPad::Class())) ++i;
+    else continue;
+    if (i==n) return static_cast<TVirtualPad*>(p);
+  }
+  throw std::runtime_error("out of bound pad index");
+}
