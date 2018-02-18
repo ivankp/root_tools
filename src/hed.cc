@@ -256,25 +256,30 @@ int main(int argc, char* argv[]) {
         pad->SetTickx();
 
         std::vector<TH1*> hh;
-        const unsigned n = g.second.size()-1;
+        const unsigned n = g.second.size();
         hh.reserve(n);
 
         TAxis *_ax = _h->GetXaxis();
         TAxis *_ay = _h->GetYaxis();
 
         for (unsigned i=0; i<n; ++i) {
-          TH1* h = static_cast<TH1*>(g.second[i+1]->Clone());
+          TH1* h = static_cast<TH1*>(g.second[i]->Clone());
+          h->SetTitle("");
+          h->SetYTitle("ratio");
+          h->SetMinimum(-1111);
+          h->SetMaximum(-1111);
           h->GetListOfFunctions()->Clear();
           h->SetStats(false);
-          h->Divide(_h);
+          divide(h,i?_h:h,canvas::rat_width);
           if (!i) {
             TAxis * ax =  h->GetXaxis();
             TAxis * ay =  h->GetYaxis();
 
             // TODO: compute correct scaling factors
-            ax->SetTitle(_ax->GetTitle());
-            ax->SetTitleSize(_ax->GetTitleSize()*3.5);
             _ay->SetTitleSize(_ay->GetTitleSize()*1.6);
+            ax->SetTitleSize(_ax->GetTitleSize()*3.5);
+            ay->SetTitleSize(ay->GetTitleSize()*2.5);
+            ay->SetTitleOffset(ay->GetTitleOffset()*0.66);
 
             const auto tx = _ax->GetTickLength();
             _ax->SetTickLength(tx*1.1);
@@ -289,10 +294,6 @@ int main(int argc, char* argv[]) {
             ay->SetLabelSize(ly*2.5);
 
             h->Draw();
-
-            TLine* l1 = new TLine(_ax->GetXmin(),1,_ax->GetXmax(),1);
-            l1->Draw();
-            canv.objs.push_back(l1);
           } else {
             h->Draw("SAME");
           }

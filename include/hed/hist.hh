@@ -19,9 +19,22 @@ struct hist {
   TH1 *h;
   shared_str legend;
 
-  hist(TH1* h): h(h) { }
+  hist(TH1* h) noexcept : h(h) { }
+  hist(TH1* h, shared_str l) noexcept : h(h), legend(l) { }
   hist(const hist&) = delete;
-  hist(hist&& o): h(o.h), legend(std::move(o.legend)) { o.h = nullptr; }
+  hist(hist&& o) noexcept
+  : h(o.h), legend(std::move(o.legend)) { o.h = nullptr; }
+  ~hist() noexcept { }
+  hist& operator=(const hist&) = delete;
+  hist& operator=(hist&& o) noexcept {
+    h = o.h;
+    legend = std::move(o.legend);
+    o.h = nullptr;
+    return *this;
+  }
+  inline hist clone(const std::string& name) {
+    return { static_cast<TH1*>(h->Clone(name.c_str())), legend };
+  }
 
   inline TH1& operator* () noexcept { return *h; }
   inline TH1* operator->() noexcept { return  h; }
@@ -49,5 +62,8 @@ public:
 
   bool operator()(const std::vector<expression>& exprs, int level=0);
 };
+
+void divide(TH1*,TH1*,bool);
+void multiply(TH1*,TH1*);
 
 #endif

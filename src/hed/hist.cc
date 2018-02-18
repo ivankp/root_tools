@@ -154,3 +154,96 @@ bool applicator<hist>::hook(const expression& expr, int level) {
 bool hist::operator()(const std::vector<expression>& exprs, shared_str& group) {
   return applicator<hist>(*this,group)(exprs);
 }
+
+bool edge_cmp(double a, double b) noexcept {
+  if (a==b) return true;
+  return std::abs(1.-a/b) < 1e-5;
+}
+
+void divide(TH1* ha, TH1* hb, bool divided_by_width=false) {
+  if (ha==hb) {
+    const unsigned n = ha->GetNbinsX()+2;
+    TArrayD *_e2 = ha->GetSumw2();
+    for (unsigned i=0; i<n; ++i) {
+      if (_e2) {
+        const auto c = ha->GetBinContent(i);
+        (*_e2)[i] *= (1./(c*c));
+      }
+      ha->SetBinContent(i,1);
+    }
+    return;
+  }
+
+  const unsigned na = ha->GetNbinsX()+2, nb = hb->GetNbinsX()+2;
+  std::vector<double> _a(na), _b(nb);
+  for (unsigned i=0; i<na; ++i) _a[i] = ha->GetBinContent(i);
+  for (unsigned i=0; i<nb; ++i) _b[i] = hb->GetBinContent(i);
+  TArrayD *_e2a = ha->GetSumw2(), *_e2b = hb->GetSumw2();
+  const TAxis *xa = ha->GetXaxis(), *xb = hb->GetXaxis();
+
+  const bool eq_n = (na==nb);
+  const bool eq_range = edge_cmp(xa->GetXmin(),xb->GetXmin())
+                     && edge_cmp(xa->GetXmax(),xb->GetXmax());
+  const bool both_uniform
+    = !xa->IsVariableBinSize() && !xb->IsVariableBinSize();
+
+  bool eq_bins = eq_n && eq_range;
+  if (eq_bins && !both_uniform) {
+    for (unsigned i=2; i<na; ++i)
+      if (!edge_cmp(xa->GetBinLowEdge(i),xb->GetBinLowEdge(i))) {
+        eq_bins = false;
+        break;
+      }
+  }
+
+#define DIV_NEW_ERR \
+  e2a = ( b==0 ? 0 : (e2a/(a*a) + e2b/(b*b))*c*c );
+
+  if (eq_bins) { // equal binning case ------------------------------
+    for (unsigned i=0; i<na; ++i) {
+      const auto& a = _a[i];
+      const auto& b = _b[i];
+      auto c = a/b;
+      if (!std::isnormal(c)) c = 0;
+      ha->SetBinContent(i, c);
+      if (_e2a && _e2b) {
+              auto& e2a = (*_e2a)[i];
+        const auto& e2b = (*_e2b)[i];
+        DIV_NEW_ERR
+      } // TODO: divide without errors
+    }
+    return;
+  } else if (eq_range) { // equal axis ranges -----------------------
+    if (both_uniform) {
+    if ((nb>na) && !((nb-2)%(na-2))) {
+      double b=0, e2b=0;
+      const unsigned nf = (nb-2)/(na-2);
+      for (unsigned ia=0, ib=0; ib<nb; ++ib) {
+        b += _b[ib];
+        if (_e2b) e2b += (*_e2b)[ib];
+        if (!(ib%nf) || ib==nb-1) {
+          const auto& a = _a[ia];
+          auto c = a/b;
+          if (divided_by_width) c *= nf;
+          if (!std::isnormal(c)) c = 0;
+          ha->SetBinContent(ia, c);
+          if (_e2a) {
+            auto& e2a = (*_e2a)[ia];
+            DIV_NEW_ERR
+          } // TODO: divide without errors
+          ++ia; b = 0; e2b=0;
+        }
+      }
+      return;
+    } // TODO: divide (na>nb)
+    } // TODO: divide non-uniform
+  }
+
+  std::cerr << "\033[31mdivide\033[0m: bin edges don't match for "
+    << ha->GetName() << " and " << hb->GetName()
+    << std::endl;
+}
+
+void multiply(TH1* a, TH1* b) {
+  a->Multiply(b);
+}

@@ -19,6 +19,7 @@ struct legend_def {
 struct canvas {
   static TCanvas *c; // reuse canvas
   bool rat = false;
+  static bool rat_width;
 
   std::vector<hist>* hh;
 

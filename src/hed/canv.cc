@@ -29,6 +29,7 @@ bool canvas::operator()(
 }
 
 TCanvas* canvas::c = nullptr;
+bool canvas::rat_width = false;
 
 canvas::canvas(std::vector<hist>* hh): hh(hh), objs() {
   c->SetLogx(0);

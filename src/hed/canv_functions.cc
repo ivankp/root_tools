@@ -120,12 +120,12 @@ F(tex,TIE(3,std::array<float,2>,std::string,Style_t,Float_t,Color_t),
   a.objs.push_back(tex);
 };
 
-F(rat,TIE(1,float),0.25) {
+F(rat,TIE(2,float,std::string),TIE(0.25,{})) {
   a.rat = true;
   const double y3 = arg<0>(),
                y1 = a->GetBottomMargin()/y3,
                y2 = a->GetTopMargin()/(1.-y3);
-  // hopefully these don't leak
+  canvas::rat_width = (arg<1>()=="width");
   TPad *top = new TPad("top_pad","",0,y3,1,1);
   TPad *bot = new TPad("bot_pad","",0,0,1,y3);
   top->SetMargin(a->GetLeftMargin(),a->GetRightMargin(),0,y2);
@@ -133,6 +133,19 @@ F(rat,TIE(1,float),0.25) {
   top->Draw();
   bot->Draw();
   top->cd();
+}
+
+F(cp,TIE(1,unsigned,std::string),{}) {
+  (*a.hh)[arg<0>()].clone(arg<1>());
+}
+F0(rm,unsigned) {
+  a.hh->erase(a.hh->begin()+arg<0>());
+}
+F0(div,TIE(unsigned,unsigned)) {
+  divide((*a.hh)[arg<0>()].h,(*a.hh)[arg<1>()].h,canvas::rat_width);
+}
+F0(mult,TIE(unsigned,unsigned)) {
+  multiply((*a.hh)[arg<0>()].h,(*a.hh)[arg<1>()].h);
 }
 
 struct load final: public base,
@@ -180,6 +193,10 @@ MAP {
   ADD(tex),
   ADD(rat),
   ADD(load),
-  ADD(pad)
+  ADD(pad),
+  ADD(cp),
+  ADD(rm),
+  ADD(div),
+  ADD(mult)
 };
 
