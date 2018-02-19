@@ -160,6 +160,12 @@ bool edge_cmp(double a, double b) noexcept {
   return std::abs(1.-a/b) < 1e-5;
 }
 
+template <typename T>
+inline T& ffix(T& x) noexcept {
+  if (!std::isnormal(x)) x = 0;
+  return x;
+}
+
 void divide(TH1* ha, TH1* hb, bool divided_by_width=false) {
   if (ha==hb) {
     const unsigned n = ha->GetNbinsX()+2;
@@ -167,7 +173,7 @@ void divide(TH1* ha, TH1* hb, bool divided_by_width=false) {
     for (unsigned i=0; i<n; ++i) {
       if (_e2) {
         const auto c = ha->GetBinContent(i);
-        (*_e2)[i] *= (1./(c*c));
+        ffix((*_e2)[i] *= (1./(c*c)));
       }
       ha->SetBinContent(i,1);
     }
@@ -197,15 +203,14 @@ void divide(TH1* ha, TH1* hb, bool divided_by_width=false) {
   }
 
 #define DIV_NEW_ERR \
-  e2a = ( b==0 ? 0 : (e2a/(a*a) + e2b/(b*b))*c*c );
+  ffix(e2a = ( b==0 ? 0 : (e2a/(a*a) + e2b/(b*b))*c*c )); \
 
   if (eq_bins) { // equal binning case ------------------------------
     for (unsigned i=0; i<na; ++i) {
       const auto& a = _a[i];
       const auto& b = _b[i];
       auto c = a/b;
-      if (!std::isnormal(c)) c = 0;
-      ha->SetBinContent(i, c);
+      ha->SetBinContent(i, ffix(c));
       if (_e2a && _e2b) {
               auto& e2a = (*_e2a)[i];
         const auto& e2b = (*_e2b)[i];
@@ -225,8 +230,7 @@ void divide(TH1* ha, TH1* hb, bool divided_by_width=false) {
           const auto& a = _a[ia];
           auto c = a/b;
           if (divided_by_width) c *= nf;
-          if (!std::isnormal(c)) c = 0;
-          ha->SetBinContent(ia, c);
+          ha->SetBinContent(ia, ffix(c));
           if (_e2a) {
             auto& e2a = (*_e2a)[ia];
             DIV_NEW_ERR
