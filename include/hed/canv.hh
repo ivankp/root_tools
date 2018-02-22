@@ -12,6 +12,7 @@
 struct legend_def {
   enum pos_t { none, coord, tr, tl, br, bl } pos = none;
   std::array<float,4> lbrt;
+  Int_t ncol;
   const char* header = nullptr;
   TObject* operator()(const std::vector<hist>& hh);
 };

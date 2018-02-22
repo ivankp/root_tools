@@ -68,6 +68,7 @@ TObject* legend_def::operator()(const std::vector<hist>& hh) {
     std::get<2>(lbrt), std::get<3>(lbrt)
   );
   leg->SetFillColorAlpha(0,0.65);
+  if (ncol>1) leg->SetNColumns(ncol);
   if (header) leg->SetHeader(header);
 
   for (const auto& h : hh)
