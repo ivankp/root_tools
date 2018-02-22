@@ -314,6 +314,8 @@ int main(int argc, char* argv[]) {
         print_primitives(&_c);
         cout.flush();
       }
+
+      _c.Clear();
     }
 
     if (ofname.back()==')') ofname.pop_back();
