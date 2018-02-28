@@ -34,6 +34,7 @@ LDFLAGS += $(ROOT_LDFLAGS)
 LDLIBS += $(ROOT_LDLIBS) -lTreePlayer
 
 L_hed := -lboost_regex
+L_flat-tree := -lboost_regex
 
 SRCS := $(shell find $(SRC) -type f -name '*$(EXT)')
 DEPS := $(patsubst $(SRC)/%$(EXT),$(BLD)/%.d,$(SRCS))
@@ -48,6 +49,7 @@ bin/hed: \
   $(BLD)/hed/expr.o $(BLD)/hed/hist.o $(BLD)/hed/canv.o \
   $(BLD)/hed/hist_functions.o $(BLD)/hed/canv_functions.o
 bin/envelopes: $(BLD)/program_options.o
+bin/flat-tree: $(BLD)/program_options.o
 
 -include $(DEPS)
 

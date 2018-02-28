@@ -51,6 +51,7 @@ auto maybe_emplace = first_valid(
   EMPLACE_EXPR( var.emplace_front(std::move(x)) ),
   EMPLACE_EXPR( var.push_front   (std::move(x)) )
 );
+// NOTE: silently does nothing if can't emplace
 
 #undef EMPLACE_EXPR
 
@@ -64,6 +65,9 @@ struct arg_parser_switch<1,T>: conjunction<
   maybe_is<
     bind_tail<is_constructible,const char*>::template type,
     m_value_type<T> >,
+  maybe_is<
+    bind_first<can_emplace,T>::template type,
+    just<const char*> >,
   value_type_not_bool<T>
 > { };
 

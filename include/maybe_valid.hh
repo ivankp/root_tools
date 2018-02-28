@@ -68,7 +68,7 @@ public:
 
   template <typename... Args, typename Index = index<Args...>>
   constexpr enable_if_nothing_t<Index,nothing>
-  operator()(Args&&... args) noexcept { return { }; }
+  operator()(Args&&...) noexcept { return { }; }
 };
 
 template <typename... Fs>
