@@ -6,6 +6,8 @@
 #include <tuple>
 #include <memory>
 #include <cstdio>
+#include <cstring>
+#include <map>
 
 #include <TFile.h>
 #include <TTree.h>
@@ -16,6 +18,7 @@
 #include "program_options.hh"
 #include "tkey.hh"
 #include "sed.hh"
+#include "string.hh"
 
 #define TEST(var) \
   std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
@@ -24,6 +27,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::get;
+using ivanp::cat;
 
 void exec(std::ostream& s, const char* cmd) {
   char buffer[128];
@@ -34,12 +38,24 @@ void exec(std::ostream& s, const char* cmd) {
       s << buffer;
 }
 
+std::array<std::string,2> leaf_type(TLeaf* l) {
+  const char* type = l->GetTypeName();
+  if (!strcmp(l->GetName(),l->GetTitle())) return { type, {} };
+  boost::cmatch m;
+  if (boost::regex_match(l->GetTitle(), m,
+      boost::regex(cat(l->GetName(),"\\[((\\d+)|(.+))\\]")))
+  ) {
+    return { type, "["+m[1].str()+"]" };
+  }
+  return { type, {} };
+}
+
 int main(int argc, char* argv[]) {
   std::vector<const char*> ifnames;
   const char *ofname = nullptr;
   std::array<std::string,2> tree_opt;
   std::vector<std::pair<sed_opt,std::string>> branches;
-  bool compile = false;
+  bool compile = false, no_chain = false;
 
   try {
     using namespace ivanp::po;
@@ -49,6 +65,7 @@ int main(int argc, char* argv[]) {
       (tree_opt,'t',"tree name")
       (branches,'b',"branches")
       (compile,'c',"compile generated code")
+      (no_chain,"--no-chain","use TTree instead of TChain for input")
       .parse(argc,argv,true)) return 0;
   } catch (const std::exception& e) {
     cerr <<"\033[31m"<< e.what() <<"\033[0m"<< endl;
@@ -60,7 +77,7 @@ int main(int argc, char* argv[]) {
 
   TTree *tree = nullptr;
 
-  if (get<0>(tree_opt).empty()) {
+  if (tree_opt[0].empty()) {
     std::vector<const char*> trees;
     for (TKey& key : get_keys(&file)) {
       if (get_class(key)->InheritsFrom(TTree::Class()))
@@ -76,18 +93,18 @@ int main(int argc, char* argv[]) {
       for (auto t : trees) cerr << t << '\n';
       return 1;
     } else {
-      get<0>(tree_opt) = trees.front();
+      tree_opt[0] = trees.front();
     }
   }
 
-  file.GetObject(get<0>(tree_opt).c_str(),tree);
+  file.GetObject(tree_opt[0].c_str(),tree);
   if (!tree) {
-    cerr << "\033[31mNo TTree \'" << get<0>(tree_opt)
+    cerr << "\033[31mNo TTree \'" << tree_opt[0]
          << "\' in file \'" << file.GetName() << "\'\033[0m" << endl;
     return 1;
   }
 
-  cout << "\033[34mInput TTree\033[0m: " << get<0>(tree_opt) << endl;
+  cout << "\033[34mInput TTree\033[0m: " << tree_opt[0] << endl;
 
   std::ofstream code(ofname);
   code <<
@@ -95,38 +112,54 @@ int main(int argc, char* argv[]) {
     "#include <iomanip>\n"
     "#include <vector>\n\n"
     "#include <TFile.h>\n"
-    "#include <TChain.h>\n\n"
+    "#include <" << (no_chain ? "TTree" : "TChain") << ".h>\n\n"
     "using namespace std;\n\n"
-    "int main(int argc, char* argv[]) {\n"
+    "int main(int argc, char* argv[]) {\n";
+
+  if (!no_chain) { code <<
     "  if (argc<3) {\n"
     "    cout << \"usage: \" << argv[0]"
     " << \" out.root in.root ...\" << endl;\n"
     "    return 1;\n  }\n\n"
-    "  TChain chain(\"" << get<0>(tree_opt) << "\");\n"
+
+    "  TChain tin(\"" << tree_opt[0] << "\");\n"
     "  cout << \"Input files:\" << endl;\n"
     "  for (int i=2; i<argc; ++i) {\n"
     "    cout <<\"  \"<< argv[i] << endl;\n"
-    "    if (!chain.Add(argv[i],0)) return 1;\n"
-    "  }\n\n"
+    "    if (!tin.Add(argv[i],0)) return 1;\n"
+    "  }\n\n";
+  } else { code <<
+    "  if (argc!=3) {\n"
+    "    cout << \"usage: \" << argv[0] << \" out.root in.root\" << endl;\n"
+    "    return 1;\n  }\n\n"
 
+    "  TFile fin(argv[2]);\n"
+    "  if (fin.IsZombie()) return 1;\n"
+    "  TTree& tin = *dynamic_cast<TTree*>("
+    "fin.Get(\"" << tree_opt[0] << "\"));\n\n";
+  }
+
+  code <<
     "  TFile fout(argv[1],\"recreate\");\n"
     "  if (fout.IsZombie()) return 1;\n"
-    "  TTree tree(\"" << tree_opt[!get<1>(tree_opt).empty()] << "\",\"\");\n\n"
+    "  TTree tout(\"" << tree_opt[!tree_opt[1].empty()] << "\",\"\");\n\n"
 
-    "  chain.SetBranchStatus(\"*\",0);\n"
+    "  tin.SetBranchStatus(\"*\",0);\n"
     "  auto in = [&](const char* name, auto* x){\n"
-    "    chain.SetBranchStatus(name,1);\n"
-    "    chain.SetBranchAddress(name,x);\n"
+    "    tin.SetBranchStatus(name,1);\n"
+    "    tin.SetBranchAddress(name,x);\n"
     "  };\n"
     << endl;
 
   std::vector<std::string> branches_cp;
+  // std::map<std::string,std::vector<string>,std::less<void>> branches_used;
 
   for (auto* _b : *tree->GetListOfBranches()) {
     TBranch *b = static_cast<TBranch*>(_b);
 
     const char* name1 = b->GetName();
 
+    if (branches.empty()) branches.emplace_back(".*","");
     for (const auto& opt : branches) if (opt.first==name1) {
       std::string name2 = opt.first.subst(name1);
 
@@ -134,33 +167,39 @@ int main(int argc, char* argv[]) {
       for (char& c : name3)
         if (!isalnum(c) && c!='_') c = '_';
 
-      std::string type = b->GetClassName();
+      std::array<std::string,2> type { b->GetClassName(), {} };
 
-      if (type.empty()) {
+      if (type[0].empty()) {
         TObjArray *leaves = b->GetListOfLeaves();
         if (b->GetNleaves()==1) {
-          type = static_cast<TLeaf*>(leaves->First())->GetTypeName();
+          type = leaf_type(static_cast<TLeaf*>(leaves->First()));
         } else {
           std::stringstream ss;
           ss << "struct { ";
           for (auto* _l : *leaves) {
             TLeaf *l = static_cast<TLeaf*>(_l);
-            ss << l->GetTypeName() << ' ' << l->GetName() << "; ";
+            const auto type = leaf_type(l);
+            ss << type[0] << ' ' << l->GetName() << type[1] << "; ";
           }
           ss << '}';
-          type = ss.str();
+          type[0] = ss.str();
         }
       }
-      const bool change_type = !opt.second.empty() && type!=opt.second;
+      const bool change_type = !opt.second.empty() && type[0]!=opt.second;
       if (change_type)
-        code << "  " << type << ' ' << name3 << "__in;\n";
-      code << "  " << (change_type?opt.second:type) << ' ' << name3 << ";\n"
-           << "  in(\"" << name1 << "\",&"
+        code << "  " << type[0] << ' ' << name3 << "__in" << type[1] << ";\n";
+      code << "  " << (change_type?opt.second:type[0])
+           << ' ' << name3 << type[1] << ";\n"
+              "  in(\"" << name1 << "\",&"
            << name3 << (change_type?"__in":"") << ");\n"
-           << "  tree.Branch(\"" << name2 << "\",&" << name3 << ");\n";
+              "  tout.Branch(\"" << name2 << "\",&" << name3 << ");\n";
 
       if (change_type)
         branches_cp.emplace_back(std::move(name3));
+
+      // if (branches_used.find(name1)==branches_used.end())
+      //   branches_used.emplace(std::piecewise_construct,
+      //       name1, std::forward_as_tuple());
 
       break;
     }
@@ -168,10 +207,10 @@ int main(int argc, char* argv[]) {
 
   code << "\n"
     "  unsigned percent = 0;\n"
-    "  auto nent = chain.GetEntries();\n"
+    "  auto nent = tin.GetEntries();\n"
     "  cout << \"  0%\\b\\b\\b\\b\" << flush;\n"
     "  for (decltype(nent) ent=0; ent<nent; ++ent) {\n"
-    "    chain.GetEntry(ent);\n"
+    "    tin.GetEntry(ent);\n"
     "    if (percent < (100.*ent/nent))\n"
     "      cout << setw(3) << ++percent << \"%\\b\\b\\b\\b\" << flush;\n";
 
@@ -180,7 +219,7 @@ int main(int argc, char* argv[]) {
     code << "    " << name << " = " << name << "__in;\n";
 
   code << "\n"
-    "    tree.Fill();\n"
+    "    tout.Fill();\n"
     "  }\n"
     "  cout << \"100%\" << endl;\n"
     "  fout.Write(0,TObject::kOverwrite);\n"
