@@ -226,12 +226,12 @@ int main(int argc, char* argv[]) {
                                   // because canvas can make new string
       cout <<"\033[36m"<< *group << "\033[0m\n";
 
-      TH1* _h = g.second.front().h;
-      _h->SetStats(false);
-
       canvas canv(&g.second);
       if (!canv(canv_exprs,group)) continue;
       if (canv.rat) getpad(&_c,1)->cd();
+
+      TH1* _h = g.second.front().h;
+      _h->SetStats(false);
 
       auto_range(g.second);
 

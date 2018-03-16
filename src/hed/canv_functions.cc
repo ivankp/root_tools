@@ -140,13 +140,19 @@ F(cp,TIE(1,unsigned,std::string),{}) {
   (*a.hh)[arg<0>()].clone(arg<1>());
 }
 F0(rm,unsigned) {
-  a.hh->erase(a.hh->begin()+arg<0>());
+  auto& hh = *a.hh;
+  if (hh.size() > arg<0>())
+    hh.erase(hh.begin()+arg<0>());
 }
 F0(div,TIE(unsigned,unsigned)) {
-  divide((*a.hh)[arg<0>()].h,(*a.hh)[arg<1>()].h,canvas::rat_width);
+  auto& hh = *a.hh;
+  if (hh.size() > arg<0>() && hh.size() > arg<1>())
+    divide(hh[arg<0>()].h,hh[arg<1>()].h,canvas::rat_width);
 }
 F0(mult,TIE(unsigned,unsigned)) {
-  multiply((*a.hh)[arg<0>()].h,(*a.hh)[arg<1>()].h);
+  auto& hh = *a.hh;
+  if (hh.size() > arg<0>() && hh.size() > arg<1>())
+    multiply(hh[arg<0>()].h,hh[arg<1>()].h);
 }
 
 struct load final: public base,
