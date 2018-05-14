@@ -7,29 +7,17 @@
 
 namespace ivanp {
 
-namespace detail {
-
-template <typename S>
-inline void cat_impl(S&) { }
-
-template <typename S, typename T>
-inline void cat_impl(S& s, const T& t) { s << t; }
-
-template <typename S, typename T, typename... TT>
-inline void cat_impl(S& s, const T& t, const TT&... tt) {
-  cat_impl(s,t);
-  cat_impl(s,tt...);
-}
-
-}
-
-template <typename... TT>
-inline std::string cat(const TT&... tt) {
+template <typename... T>
+inline std::string cat(T&&... x) {
   std::stringstream ss;
-  detail::cat_impl(ss,tt...);
+  using expander = int[];
+  (void)expander{0, ((void)(ss << std::forward<T>(x)), 0)...};
   return ss.str();
 }
 inline std::string cat() { return { }; }
+
+inline std::string cat(std::string x) { return x; }
+inline std::string cat(const char* x) { return x; }
 
 template <typename Str, unsigned N>
 inline bool starts_with(const Str& str, const char(&prefix)[N]) {
@@ -46,7 +34,9 @@ inline bool ends_with(const char* str, const char(&suffix)[N]) {
 }
 template <unsigned N>
 inline bool ends_with(const std::string& str, const char(&suffix)[N]) {
-  return ends_with<N>(str.c_str(),suffix);
+  const unsigned len = str.size();
+  if (len<N-1) return false;
+  return starts_with(str.c_str()+(len-N+1),suffix);
 }
 
 struct less_sz {

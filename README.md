@@ -1,3 +1,26 @@
+# List of programs
+
+`br`
+: list contents of ROOT files and `TTree`s in them.
+
+`tbrowser`
+: start a `TBrowser` and open files without going into ROOT prompt.
+
+`hed`
+: draw and format histograms from ROOT files; inspired by `sed`.
+
+`trw`
+: generate code for flattening a complex `TTree`.
+
+`histdump`
+: dump numbers from a histogram in a ROOT file in text form.
+
+`hrat`
+: take ratio between identically named histograms in two ROOT files.
+
+`envelopes`
+: don't remember
+
 # `hed`
 
 ## Regular expressions syntax
