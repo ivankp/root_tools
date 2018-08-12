@@ -2,8 +2,8 @@
 #define IVANP_STRING_HH
 
 #include <string>
-#include <cstring>
 #include <sstream>
+#include <cstring>
 
 namespace ivanp {
 
@@ -18,6 +18,19 @@ inline std::string cat() { return { }; }
 
 inline std::string cat(std::string x) { return x; }
 inline std::string cat(const char* x) { return x; }
+
+template <typename L, typename Delim>
+inline std::string lcat(const L& list, const Delim& delim) {
+  auto it = std::begin(list);
+  auto end = std::end(list);
+  if (it==end) return { };
+  std::stringstream ss;
+  ss << *it;
+  for (++it; it!=end; ++it) ss << delim << *it;
+  return ss.str();
+}
+template <typename L>
+inline std::string lcat(const L& list) { return lcat(list,' '); }
 
 template <typename Str, unsigned N>
 inline bool starts_with(const Str& str, const char(&prefix)[N]) {
@@ -48,4 +61,3 @@ struct less_sz {
 }
 
 #endif
-
