@@ -38,6 +38,8 @@ struct hist {
 
   inline TH1& operator* () noexcept { return *h; }
   inline TH1* operator->() noexcept { return  h; }
+  inline const TH1& operator* () const noexcept { return *h; }
+  inline const TH1* operator->() const noexcept { return  h; }
 
   bool operator()(const std::vector<expression>& exprs, shared_str& group);
 
@@ -65,5 +67,6 @@ public:
 
 void divide(TH1*,TH1*,bool);
 void multiply(TH1*,TH1*);
+void hadd(TH1*,TH1*,double);
 
 #endif

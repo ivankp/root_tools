@@ -154,6 +154,11 @@ F0(mult,TIE(unsigned,unsigned)) {
   if (hh.size() > arg<0>() && hh.size() > arg<1>())
     multiply(hh[arg<0>()].h,hh[arg<1>()].h);
 }
+F(add,TIE(1,unsigned,unsigned,double),1) {
+  auto& hh = *a.hh;
+  if (hh.size() > arg<0>() && hh.size() > arg<1>())
+    hadd(hh[arg<0>()].h,hh[arg<1>()].h,arg<2>());
+}
 
 struct load final: public base,
   private interpreted_args<1,std::string,std::string>
@@ -204,6 +209,7 @@ MAP {
   ADD(cp),
   ADD(rm),
   ADD(div),
-  ADD(mult)
+  ADD(mult),
+  ADD(add)
 };
 
