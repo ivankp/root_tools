@@ -248,6 +248,6 @@ void divide(TH1* ha, TH1* hb, bool divided_by_width=false) {
     << std::endl;
 }
 
-void multiply(TH1* a, TH1* b) {
-  a->Multiply(b);
-}
+void multiply(TH1* a, TH1* b) { a->Multiply(b); }
+void hadd(TH1* a, TH1* b, double c) { a->Add(b,c); }
+

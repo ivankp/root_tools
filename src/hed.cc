@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
   std::string ofname;
   std::vector<const char*> ifnames;
   std::vector<const char*> hist_exprs_args, canv_exprs_args;
-  bool sort_groups = false;
+  bool sort_groups = false, remove_blank = false;
   ring<std::vector<Color_t>> colors;
   enum class Ext { pdf, root } ext = Ext::pdf;
 
@@ -113,6 +113,7 @@ int main(int argc, char* argv[]) {
       (hist_exprs_args,'e',"histogram expressions")
       (canv_exprs_args,'g',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
+      (remove_blank,{"-b","--remove-blank"},"skip blank canvases")
       (*colors,"--colors","color palette")
       (verbose,{"-v","--verbose"}, "print debug info\n"
        "e : expressions\n"
@@ -207,6 +208,19 @@ int main(int argc, char* argv[]) {
     cout << "\033[34mInput file:\033[0m " << f->GetName() << endl;
 
     loop(f);
+  }
+  if (remove_blank) {
+    for (auto it=group_map.begin(); it!=group_map.end(); ) {
+      for (const auto& h : it->second) {
+        for (int i=1, n=h->GetNbinsX(); i<=n; ++i)
+          if (h->GetBinContent(i) != 0) {
+            ++it;
+            goto loop_end;
+          }
+      }
+      it = group_map.erase(it);
+      loop_end: ;
+    }
   }
   if (sort_groups) group_map.sort(
     [](const auto& a, const auto& b){ return *(a->first) < *(b->first); });
