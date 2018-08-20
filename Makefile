@@ -48,8 +48,8 @@ bin/hed: \
   $(BLD)/program_options.o \
   $(BLD)/hed/expr.o $(BLD)/hed/hist.o $(BLD)/hed/canv.o \
   $(BLD)/hed/hist_functions.o $(BLD)/hed/canv_functions.o
-bin/envelopes: $(BLD)/program_options.o
 bin/trw: $(BLD)/program_options.o $(BLD)/sed.o
+bin/envelopes bin/yoda2root: $(BLD)/program_options.o
 
 -include $(DEPS)
 
