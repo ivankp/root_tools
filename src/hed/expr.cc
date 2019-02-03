@@ -43,6 +43,10 @@ const char* consume_suffix(const char* s, flags& _fl) {
         if (fl.from || fl.add) return nullptr; // after field or +
         fl.m = true; continue;
       }
+      case 'p': {
+        if (fl.from || fl.add) return nullptr; // after field or +
+        fl.p = true; continue;
+      }
       case '+': { // concatenate
         if (fl.add) return nullptr; // multiple +
         if (!fl.from) fl.add = flags::prepend;
@@ -220,6 +224,8 @@ expression::expression(const char*& str): flags() {
 } // ================================================================
 
 shared_str expression::operator()(shared_str str) const {
+  if (p) std::cout << "p: input: " << *str << std::endl;
+
   if (re.empty()) return sub ? sub : str; // no regex
 
   auto last = str->cbegin();
