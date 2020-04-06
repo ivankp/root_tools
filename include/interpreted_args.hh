@@ -55,7 +55,7 @@ private:
     if ((++it)!=end) throw std::runtime_error("too many arguments");
   }
   template <size_t I, typename It, typename End>
-  constexpr std::enable_if_t<!nargs> convert(It&, const End&) noexcept { }
+  constexpr std::enable_if_t<(I,!nargs)> convert(It&, const End&) noexcept { }
 
   inline auto make_split_iterator_impl(boost::string_view str) {
     return boost::make_split_iterator(

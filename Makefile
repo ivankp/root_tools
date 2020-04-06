@@ -1,8 +1,6 @@
 SHELL := bash
-CXX := g++
-STD := -std=c++14
-CPPFLAGS := $(STD) -Iinclude
-CXXFLAGS := $(STD) -Wall -O3 -Iinclude -fmax-errors=3
+CPPFLAGS := -Iinclude
+CXXFLAGS := -Wall -O3 -fmax-errors=3
 # CXXFLAGS := $(STD) -Wall -g -Iinclude -fmax-errors=3
 LDFLAGS :=
 LDLIBS :=
@@ -18,7 +16,7 @@ ifeq (0, $(words $(findstring $(MAKECMDGOALS), clean)))
 
 LDFLAGS += $(shell sed -r 's/([^:]+)(:|$$)/ -L\1/g' <<< "$$LIBRARY_PATH")
 
-ROOT_CXXFLAGS := $(shell root-config --cflags | sed 's/ -std=c++[^ ]\+ / /')
+ROOT_CXXFLAGS := $(shell root-config --cflags)
 ROOT_LDFLAGS  := $(shell root-config --ldflags)
 ROOT_LDLIBS   := $(shell root-config --libs)
 
@@ -33,9 +31,6 @@ CXXFLAGS += $(ROOT_CXXFLAGS)
 LDFLAGS += $(ROOT_LDFLAGS)
 LDLIBS += $(ROOT_LDLIBS) -lTreePlayer
 
-L_hed := -lboost_regex
-L_trw := -lboost_regex
-
 SRCS := $(shell find $(SRC) -type f -name '*$(EXT)')
 DEPS := $(patsubst $(SRC)/%$(EXT),$(BLD)/%.d,$(SRCS))
 
@@ -44,25 +39,28 @@ EXES := $(patsubst $(SRC)%$(EXT),$(BIN)%,$(shell $(GREP_EXES)))
 
 all: $(EXES)
 
-bin/hed: \
+$(BIN)/hed: LDLIBS += -lboost_regex
+$(BIN)/trw: LDLIBS += -lboost_regex
+
+$(BIN)/hed: \
   $(BLD)/program_options.o \
   $(BLD)/hed/expr.o $(BLD)/hed/hist.o $(BLD)/hed/canv.o \
   $(BLD)/hed/hist_functions.o $(BLD)/hed/canv_functions.o
-bin/trw: $(BLD)/program_options.o $(BLD)/sed.o
-bin/envelopes bin/yoda2root: $(BLD)/program_options.o
+$(BIN)/trw: $(BLD)/program_options.o $(BLD)/sed.o
+$(BIN)/envelopes $(BIN)/yoda2root: $(BLD)/program_options.o
 
 -include $(DEPS)
 
 .SECONDEXPANSION:
 
 $(DEPS): $(BLD)/%.d: $(SRC)/%$(EXT) | $(BLD)/$$(dir %)
-	$(CXX) $(CPPFLAGS) $(C_$*) -MM -MT '$(@:.d=.o)' $< -MF $@
+	$(CXX) $(CPPFLAGS) -MM -MT '$(@:.d=.o)' $< -MF $@
 
 $(BLD)/%.o: | $(BLD)
-	$(CXX) $(CXXFLAGS) $(C_$*) -c $(filter %$(EXT),$^) -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(filter %$(EXT),$^) -o $@
 
 $(BIN)/%: $(BLD)/%.o | $(BIN)
-	$(CXX) $(LDFLAGS) $(filter %.o,$^) -o $@ $(LDLIBS) $(L_$*)
+	$(CXX) $(LDFLAGS) $(filter %.o,$^) -o $@ $(LDLIBS)
 
 $(BIN):
 	mkdir -p $@

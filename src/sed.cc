@@ -53,5 +53,5 @@ std::string sed_opt::subst(const std::string& str) const {
     ++it;
   }
   std::copy(last, str.cend(), out);
-  return std::move(result);
+  return result;
 }
