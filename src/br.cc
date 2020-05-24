@@ -149,6 +149,7 @@ void print(TTree* tree) {
 }
 
 bool integrals = false;
+bool titles = false;
 
 template <typename T>
 inline T* key_cast(TKey* key) {
@@ -227,6 +228,8 @@ bool print_list(TList* list, bool first=true) {
       TH1 *h = key_cast<TH1>(x);
       if (integrals)
         cout << cat(' ',std::fixed,std::setprecision(6),h->Integral(0,-1));
+      if (titles)
+        cout << cat(' ',std::fixed,std::setprecision(6),h->GetTitle());
       TList *fs = h->GetListOfFunctions();
       cout << endl;
       print_list<false>(fs, false);
@@ -252,6 +255,8 @@ int main(int argc, char** argv) {
   for (int i=2; i<argc; ++i) {
     if (!strcmp(argv[i],"--integrals"))
       integrals = true;
+    else if (!strcmp(argv[i],"-t"))
+      titles = true;
   }
 
   cout << "File size: " << file_size_str(argv[1]) <<'\n'<< endl;
