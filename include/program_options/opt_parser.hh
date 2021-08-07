@@ -43,7 +43,7 @@ arg_parser_impl(const char* arg, T& var) { var = arg; }
 #endif
 #define EMPLACE_EXPR(EXPR) SFINAE_EXPR(EXPR, auto& var, auto&& x)
 
-auto maybe_emplace = first_valid(
+inline auto maybe_emplace = first_valid(
   EMPLACE_EXPR( var.emplace_back (std::move(x)) ),
   EMPLACE_EXPR( var.push_back    (std::move(x)) ),
   EMPLACE_EXPR( var.emplace      (std::move(x)) ),

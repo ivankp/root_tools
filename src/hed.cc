@@ -23,6 +23,7 @@
 #include "transform_iterator.hh"
 #include "hist_range.hh"
 #include "ring.hh"
+#include "collator.hh"
 
 #define TEST(var) \
   std::cout << "\033[36m" #var "\033[0m = " << var << std::endl;
@@ -103,6 +104,7 @@ int main(int argc, char* argv[]) {
   bool sort_groups = false, remove_blank = false;
   ring<std::vector<Color_t>> colors;
   enum class Ext { pdf, root } ext = Ext::pdf;
+  int collation = 1;
 
   try {
     using namespace ivanp::po;
@@ -113,6 +115,7 @@ int main(int argc, char* argv[]) {
       (hist_exprs_args,'e',"histogram expressions")
       (canv_exprs_args,'g',"canvas expressions")
       (sort_groups,"--sort","sort groups alphabetically")
+      (collation,"--collate","collate pdf pages")
       (remove_blank,{"-b","--remove-blank"},"skip blank canvases")
       (*colors,"--colors","color palette")
       (verbose,{"-v","--verbose"}, "print debug info\n"
@@ -234,7 +237,7 @@ int main(int argc, char* argv[]) {
     unsigned group_back_cnt = group_map.size();
     if (group_back_cnt > 1) ofname += '(';
     bool first_group = true;
-    for (auto& g : group_map) {
+    for (auto& g : collator(group_map,collation)) {
       --group_back_cnt;
       shared_str group = g.first; // need to copy pointer here
                                   // because canvas can make new string

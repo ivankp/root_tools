@@ -21,7 +21,7 @@ inline T* get(TDirectory* dir, const char* name) {
 }
 
 void dir_loop(TDirectory* dir1, TDirectory* dir2) {
-  auto *cur_dir = gDirectory;
+  TDirectory* cur_dir = gDirectory;
   TIter next(dir1->GetListOfKeys());
   TKey *key;
   while ((key = static_cast<TKey*>(next()))) {

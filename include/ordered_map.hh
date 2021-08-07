@@ -21,10 +21,23 @@ template <typename Iterator>
 class deref_iterator {
   Iterator it;
 public:
+  using iterator_category =
+    typename std::iterator_traits<Iterator>::iterator_category;
+  using difference_type =
+    typename std::iterator_traits<Iterator>::difference_type;
+  using reference = decltype(**it);
+  using pointer = decltype(*it);
+  using value_type = std::remove_reference_t<reference>;
+
   constexpr deref_iterator(Iterator it): it(it) { }
-  inline auto& operator*() noexcept { return **it; }
-  inline auto& operator->() noexcept { return *it; }
-  inline auto& operator++() noexcept(noexcept(++it)) { ++it; return *this; }
+  reference operator*() noexcept { return **it; }
+  pointer operator->() noexcept { return *it; }
+  deref_iterator& operator++() noexcept(noexcept(++it)) { ++it; return *this; }
+  deref_iterator& operator--() noexcept(noexcept(--it)) { --it; return *this; }
+  deref_iterator& operator+=(difference_type i) noexcept(noexcept(it += i))
+  { it += i; return *this; }
+  deref_iterator& operator-=(difference_type i) noexcept(noexcept(it -= i))
+  { it -= i; return *this; }
   constexpr bool operator==(const deref_iterator& r) const noexcept
   { return it == r.it; }
   constexpr bool operator!=(const deref_iterator& r) const noexcept
